@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun isAllowedOrigin(uri: Uri): Boolean {
         // Define allowed origins with explicit scheme, host, and port
-        val allowedOrigins = listOf(
+        val allowedOrigins = listOf<Triple<String, String, Int>>(
             // Example: Triple("https", "api.axolync.com", 443)
             // Add trusted origins as needed for provider endpoints
         )
