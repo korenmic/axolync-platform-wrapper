@@ -2,7 +2,7 @@
 
 ## System Architecture
 
-This project runs on a **Steam Deck** (Arch Linux host) with development work isolated in an **Ubuntu container** called `dev` using **distrobox**.
+This project runs on a **Steam Deck** (Arch Linux host) with development work isolated in an **Ubuntu container** called `devbox` using **distrobox**.
 
 ## Command Execution Rules
 
@@ -11,19 +11,58 @@ This project runs on a **Steam Deck** (Arch Linux host) with development work is
 - File read/write operations
 - Git commands (commit, status, add, diff, log, etc.)
 - Simple file system operations (ls, cat, find, etc.)
+- Non-interactive commands only
 
 **FORBIDDEN:**
-- Build commands (gradlew, npm, cargo, etc.)
-- Test execution
-- Package installation
+- Build commands (gradlew, npm, cargo, etc.) - use container instead
+- Test execution - use container instead
+- Package installation (pacman, yay, etc.)
 - Any critical/heavy compilation or execution tasks
+- Interactive commands that require user input (unless auto-answered with pipes/flags)
 
 ### Dev Container (Ubuntu - distrobox)
 **REQUIRED FOR:**
 - All Gradle/Android build commands
 - Test execution
-- Package installation (if needed)
 - Any compilation or build tasks
+
+**ALLOWED:**
+- Using pre-installed tools (Java, Gradle, Android SDK, etc.)
+- Running builds and tests with already-installed dependencies
+
+**FORBIDDEN:**
+- Installing new packages (apt, snap, etc.) - tools must already be installed
+- Interactive commands that block without user input (unless auto-answered)
+
+**IMPORTANT:** You can USE tools that are already installed in the container, but you cannot INSTALL new tools.
+
+## Interactive Commands
+
+**CRITICAL RULE:** Never run interactive commands that require user input unless you can auto-answer them with pipes, flags, or input redirection.
+
+**Examples of FORBIDDEN interactive commands:**
+```bash
+# These will block and wait for user input - DO NOT USE
+apt install package-name          # Asks for confirmation
+npm init                          # Asks questions
+git config --global user.name     # May prompt
+```
+
+**How to handle interactive commands:**
+```bash
+# Use flags to auto-answer
+apt install -y package-name       # -y auto-confirms
+npm init -y                       # -y uses defaults
+echo "value" | command            # Pipe input
+
+# Or check if already configured
+git config user.name || echo "Not set"  # Check first, don't prompt
+```
+
+**If a command becomes interactive unexpectedly:**
+1. Cancel it (Ctrl+C will be sent automatically)
+2. Research the non-interactive flags/options
+3. Retry with proper flags
 
 ## How to Execute Commands in Container
 
@@ -77,6 +116,65 @@ git diff
 # etc.
 ```
 
+## Git Commit Policy for Spec Tasks
+
+**CRITICAL WORKFLOW:** When implementing tasks from a spec (tasks.md), each task completion MUST be committed separately with the following rules:
+
+### Per-Task Commit Structure
+
+1. **One commit per task** (or sub-task if specified)
+2. **Each commit MUST include:**
+   - The task checkbox update in tasks.md (marking that specific task as `[x]`)
+   - All implementation files related to that task
+   - Any test files for that task
+
+3. **Commit message format:**
+   ```
+   feat: task X.Y - brief description
+   
+   - Detailed point 1
+   - Detailed point 2
+   - Requirements: X.Y, Z.A
+   ```
+
+### Example Workflow
+
+For task 7.1 "Create NativeBridge class":
+```bash
+# 1. Implement the code
+# 2. Update tasks.md to mark ONLY task 7.1 as [x]
+# 3. Stage both files
+git add app/src/main/kotlin/.../NativeBridge.kt
+git add .kiro/specs/feature-name/tasks.md
+# 4. Commit with descriptive message
+git commit -m "feat: task 7.1 - create NativeBridge class
+
+- Implement @JavascriptInterface methods
+- Add JSON response handling
+- Requirements: 3.3, 3.4"
+```
+
+### Why This Matters
+
+- **Traceability:** `git log --follow tasks.md` shows exactly which tasks were completed in which commits
+- **Atomic changes:** Each commit represents one complete task
+- **Easy rollback:** Can revert individual tasks without affecting others
+- **Clear history:** Each commit tells a story of one specific feature/task
+
+### What NOT To Do
+
+❌ **DON'T** commit multiple tasks together
+❌ **DON'T** commit implementation without updating tasks.md
+❌ **DON'T** update tasks.md without committing the implementation
+❌ **DON'T** mark tasks as complete in tasks.md before implementing them
+
+### Checkpoint Tasks
+
+Checkpoint tasks (e.g., "Ensure all tests pass") should be committed after running tests successfully, including:
+- The tasks.md update marking the checkpoint complete
+- Any test output or test file changes
+- Any fixes made to pass the tests
+
 ## Repository Boundaries
 
 ### This Repository (axolync-android-wrapper)
@@ -115,9 +213,14 @@ Java is installed in the `devbox` container, not on the host. Always use the con
 |----------------|------|-----------|
 | File I/O | ✅ | ✅ |
 | Git commands | ✅ | ✅ |
-| Gradle/builds | ❌ | ✅ |
-| Tests | ❌ | ✅ |
-| Package install | ❌ | ✅ |
+| Gradle/builds | ❌ | ✅ (if installed) |
+| Tests | ❌ | ✅ (if installed) |
+| Package install | ❌ | ❌ |
 | Global git config | ❌ | ❌ |
+| Interactive commands | ❌ | ❌ |
 
-**Remember:** When in doubt, use the container for anything that compiles, builds, or executes code.
+**Remember:** 
+- When in doubt, use the container for anything that compiles, builds, or executes code
+- Always use non-interactive flags for commands
+- Never install packages - only use what's already installed
+- Each task gets its own commit with tasks.md update included
