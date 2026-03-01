@@ -82,8 +82,13 @@ tasks.register<Copy>("copyAxolyncBrowserAssets") {
     description = "Copy built axolync-browser assets to Android assets directory"
     group = "build"
     
+    // Copy dist directory contents
     from("${rootProject.projectDir}/axolync-browser/dist") {
         include("**/*")
+    }
+    // Copy index.html from root
+    from("${rootProject.projectDir}/axolync-browser") {
+        include("index.html")
     }
     into("${projectDir}/src/main/assets/axolync-browser")
     
@@ -93,6 +98,12 @@ tasks.register<Copy>("copyAxolyncBrowserAssets") {
             throw GradleException(
                 "axolync-browser dist directory not found at ${sourceDir.absolutePath}. " +
                 "Please build axolync-browser first or add it as a Git submodule."
+            )
+        }
+        val indexHtml = file("${rootProject.projectDir}/axolync-browser/index.html")
+        if (!indexHtml.exists()) {
+            throw GradleException(
+                "axolync-browser index.html not found at ${indexHtml.absolutePath}."
             )
         }
     }
