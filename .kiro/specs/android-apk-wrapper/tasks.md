@@ -1,0 +1,338 @@
+# Implementation Plan: Android APK Wrapper
+
+## Overview
+
+This implementation plan creates a native Android application that hosts the Axolync karaoke companion web experience (axolync-browser v1.0.0) within a WebView. The wrapper follows a thin native wrapper pattern with bundled static assets, providing platform-specific services (audio capture, permissions, lifecycle management) while preserving the complete state machine and UX semantics of the web application.
+
+The implementation uses Kotlin for all native Android components and integrates the axolync-browser submodule as the authoritative source for the web application.
+
+## Tasks
+
+- [x] 1. Set up Android project structure and dependencies
+  - Create new Android project with Kotlin support (minSdk 24, targetSdk 34)
+  - Add axolync-browser as Git submodule at project root
+  - Configure Gradle build to copy built axolync-browser assets to `app/src/main/assets/axolync-browser/`
+  - Add required dependencies: AndroidX, Kotlin coroutines, testing libraries (Kotest for property-based testing)
+  - Configure manifest with required permissions (RECORD_AUDIO, INTERNET, ACCESS_NETWORK_STATE)
+  - Set up basic project structure: activities, services, utils packages
+  - _Requirements: 1.1, 1.4_
+
+- [ ] 2. Implement SplashActivity and app initialization flow
+  - [x] 2.1 Create SplashActivity with splash screen layout
+    - Implement SplashActivity that displays splash screen on launch
+    - Add splash screen drawable/layout resources
+    - Implement initialization check logic with timeout (5 seconds max)
+    - Add navigation to MainActivity when ready signal received
+    - _Requirements: 2.1, 2.2_
+  
+  - [ ] 2.2 (Optional) Write unit tests for SplashActivity
+    - Test splash screen displays on startup
+    - Test navigation to MainActivity on ready signal
+    - Test timeout behavior on slow initialization
+    - _Requirements: 2.1, 2.2_
+
+- [ ] 3. Implement WebView configuration and asset loading
+  - [x] 3.1 Create MainActivity with WebView setup
+    - Implement MainActivity as primary activity hosting WebView
+    - Configure WebView with security settings (JavaScript enabled, file access disabled, mixed content blocked)
+    - Implement strict origin validation with exact scheme+host+port matching
+    - Implement origin enforcement for both top-level navigation and subresource requests (e.g., shouldInterceptRequest), blocking all untrusted origins
+    - Load bundled assets from `file:///android_asset/axolync-browser/index.html`
+    - Disable remote debugging in production builds
+    - _Requirements: 1.2, 1.3, 6.1, 6.3, 6.4, 11.2, 11.6, 11.8_
+  
+  - [ ] 3.2 (Optional) Write unit tests for WebView configuration
+    - Test JavaScript enabled and file access disabled
+    - Test origin validation blocks untrusted URLs
+    - Test remote debugging disabled in production
+    - Test asset loading from bundled path
+    - _Requirements: 11.2, 11.6, 11.8_
+  
+  - [ ] 3.3 (Optional) Write property test for origin validation
+    - **Property 17: Untrusted Origin Blocking**
+    - **Property 19: Origin Validation Strictness**
+    - **Validates: Requirements 11.6, 11.8**
+
+- [ ] 4. Implement PermissionManager for microphone access
+  - [x] 4.1 Create PermissionManager class
+    - Implement checkMicrophonePermission() returning PermissionStatus enum
+    - Implement requestMicrophonePermission() using Android runtime permissions API
+    - Implement shouldShowRationale() to determine if explanation needed
+    - Implement openAppSettings() to navigate to app settings
+    - Handle permission result callbacks
+    - _Requirements: 3.1, 3.2_
+  
+  - [ ] 4.2 (Optional) Write unit tests for PermissionManager
+    - Test permission status detection (granted, denied, denied permanently)
+    - Test rationale display logic
+    - Test app settings navigation
+    - _Requirements: 3.1, 3.2_
+  
+  - [ ] 4.3 (Optional) Write property test for permission-gated capture
+    - **Property 4: Permission-Gated Capture**
+    - **Validates: Requirements 3.1**
+
+- [ ] 5. Implement AudioCaptureService for microphone audio
+  - [x] 5.1 Create AudioCaptureService class
+    - Implement startCapture() using AudioRecord API with 44.1kHz, mono, 16-bit PCM
+    - Calculate buffer size using AudioRecord.getMinBufferSize() with 2x multiplier
+    - Implement stopCapture() to release audio resources
+    - Implement captureLoop() on dedicated background thread
+    - Implement PCM 16-bit to Float32Array conversion (normalized to [-1, 1])
+    - Add audio callback mechanism for delivering chunks
+    - _Requirements: 3.3, 3.4, 8.1, 8.8_
+  
+  - [ ] 5.2 (Optional) Write unit tests for AudioCaptureService
+    - Test capture start/stop lifecycle
+    - Test PCM to Float32Array conversion accuracy
+    - Test buffer size calculation
+    - Test callback delivery mechanism
+    - _Requirements: 8.1, 8.8_
+  
+  - [ ] 5.3 (Optional) Write property test for audio timestamp monotonicity
+    - **Property 18: Audio Timestamp Monotonicity**
+    - **Validates: Requirements 8.1**
+
+- [-] 6. Checkpoint - Ensure all tests pass
+  - Run the full defined test suite for current scope, record pass/fail output, and proceed only on green status.
+
+- [ ] 7. Implement NativeBridge JavaScript interface
+  - [ ] 7.1 Create NativeBridge class with JavaScript interface methods
+    - Implement @JavascriptInterface methods: startAudioCapture(), stopAudioCapture()
+    - Implement checkMicrophonePermission(), requestMicrophonePermission(), openAppSettings()
+    - Implement getNetworkStatus() returning JSON with online status
+    - Implement appReady() signal from web app
+    - Implement logError() for web-to-native error logging
+    - All methods return JSON strings for security
+    - _Requirements: 3.3, 3.4, 7.3_
+  
+  - [ ] 7.2 Implement native-to-web communication methods
+    - Implement deliverAudioChunk() using evaluateJavascript to call window.AxolyncNative.onAudioChunk()
+    - Implement notifyLifecycleEvent() to call window.AxolyncNative.onLifecycle()
+    - Implement notifyPermissionResult() to call window.AxolyncNative.onPermissionResult()
+    - Ensure Float32Array audio data properly transferred via ArrayBuffer
+    - _Requirements: 3.4, 10.1, 10.2_
+  
+  - [ ] 7.3 (Optional) Write unit tests for NativeBridge
+    - Test all JavaScript interface methods return valid JSON
+    - Test native-to-web calls execute correctly
+    - Test audio chunk delivery with Float32Array format
+    - Test input validation on all parameters
+    - _Requirements: 3.3, 3.4_
+  
+  - [ ] 7.4 (Optional) Write property test for capture enablement after permission grant
+    - **Property 5: Capture Enablement After Permission Grant**
+    - **Validates: Requirements 3.3**
+
+- [ ] 8. Implement LifecycleCoordinator for Android lifecycle events
+  - [ ] 8.1 Create LifecycleCoordinator class
+    - Implement onAppPause() to suspend audio capture and notify web app
+    - Implement onAppResume() to restore audio capture if previously active
+    - Implement onAppBackground() to persist web app state to SharedPreferences
+    - Implement onAppForeground() to restore web app state from SharedPreferences
+    - Implement onLowMemory() to notify web app to release resources
+    - Implement saveState() and restoreState() for state persistence
+    - _Requirements: 2.4, 10.1, 10.2, 10.3, 10.4, 10.5_
+  
+  - [ ] 8.2 (Optional) Write unit tests for LifecycleCoordinator
+    - Test pause suspends audio capture
+    - Test resume restores audio capture
+    - Test state persistence and restoration
+    - Test low memory handling
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
+  
+  - [ ] 8.3 (Optional) Write property test for pause suspends capture
+    - **Property 14: Pause Suspends Capture**
+    - **Validates: Requirements 10.1**
+  
+  - [ ] 8.4 (Optional) Write property test for resume restores capture
+    - **Property 15: Resume Restores Capture**
+    - **Validates: Requirements 10.2**
+  
+  - [ ] 8.5 (Optional) Write property test for lifecycle state round-trip
+    - **Property 16: Lifecycle State Round-Trip**
+    - **Validates: Requirements 10.3, 10.4**
+
+- [ ] 9. Implement NetworkMonitor for connectivity detection
+  - [ ] 9.1 Create NetworkMonitor class
+    - Implement isOnline() using ConnectivityManager
+    - Implement getConnectionType() returning WIFI, CELLULAR, or NONE
+    - Implement registerCallback() using NetworkCallback for state changes
+    - Implement unregisterCallback() for cleanup
+    - Notify NativeBridge when connectivity changes
+    - _Requirements: 7.2, 7.3, 7.4_
+  
+  - [ ] 9.2 (Optional) Write unit tests for NetworkMonitor
+    - Test online/offline detection
+    - Test connection type detection
+    - Test callback registration and notification
+    - _Requirements: 7.2, 7.3, 7.4_
+  
+  - [ ] 9.3 (Optional) Write property test for network check before operations
+    - **Property 9: Network Check Before Network Operations**
+    - **Validates: Requirements 7.3**
+  
+  - [ ] 9.4 (Optional) Write property test for state preservation during connectivity changes
+    - **Property 10: State Preservation During Connectivity Changes**
+    - **Validates: Requirements 7.5**
+
+- [ ] 10. Checkpoint - Ensure all tests pass
+  - Run the full defined test suite for current scope, record pass/fail output, and proceed only on green status.
+
+- [ ] 11. Implement PluginManager for plugin package management
+  - [ ] 11.1 Create PluginManager class with storage structure
+    - Implement installPlugin() to install plugin to app-private storage
+    - Implement updatePlugin() with backup and rollback support
+    - Implement validatePlugin() with checksum/signature verification
+    - Implement rollbackPlugin() to restore previous version on failure
+    - Implement listInstalledPlugins() and getPluginPath()
+    - Use storage path: context.filesDir/plugins/{pluginId}/{version}/
+    - Maintain plugin registry in SharedPreferences or SQLite
+    - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.10_
+  
+  - [ ] 11.2 (Optional) Write unit tests for PluginManager
+    - Test plugin installation flow
+    - Test plugin update with backup
+    - Test checksum validation
+    - Test rollback on failure
+    - Test plugin registry management
+    - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9_
+  
+  - [ ] 11.3 (Optional) Write property test for invalid plugin rejection
+    - **Property 6: Invalid Plugin Rejection**
+    - **Validates: Requirements 5.8, 5.11**
+  
+  - [ ] 11.4 (Optional) Write property test for plugin update rollback
+    - **Property 7: Plugin Update Rollback**
+    - **Validates: Requirements 5.9**
+
+- [ ] 12. Wire all components together in MainActivity
+  - [ ] 12.1 Integrate all services in MainActivity
+    - Initialize PermissionManager, AudioCaptureService, LifecycleCoordinator, NetworkMonitor, PluginManager
+    - Create and register NativeBridge with WebView
+    - Wire lifecycle callbacks to LifecycleCoordinator
+    - Wire permission results to PermissionManager
+    - Connect AudioCaptureService output to NativeBridge for delivery to web app
+    - Connect NetworkMonitor changes to NativeBridge notifications
+    - Handle SplashActivity ready signal coordination
+    - _Requirements: 1.2, 1.3, 2.1, 2.4_
+  
+  - [ ] 12.2 (Optional) Write integration tests for MainActivity
+    - Test component initialization order
+    - Test lifecycle event propagation
+    - Test audio capture to bridge delivery
+    - Test permission flow end-to-end
+    - _Requirements: 1.2, 1.3, 2.4_
+
+- [ ] 13. Implement error handling and user feedback
+  - [ ] 13.1 Add error handling for all failure scenarios
+    - Implement error dialogs for permission denied, audio hardware errors, capture timeout
+    - Implement error handling for plugin installation/update failures
+    - Implement connectivity status messages for network errors
+    - Implement state restoration failure handling
+    - Implement asset load failure error screen
+    - Add logging for all error conditions with context
+    - _Requirements: 3.2, 5.11, 7.2, 7.5_
+  
+  - [ ] 13.2 (Optional) Write unit tests for error handling
+    - Test error dialog display for various failure scenarios
+    - Test error recovery flows
+    - Test logging captures error context
+    - _Requirements: 3.2, 5.11, 7.2_
+
+- [ ] 14. Implement demo and automation support
+  - [ ] 14.1 Create fake microphone capture for testing
+    - Implement FakeAudioCaptureService with pre-recorded audio playback
+    - Add configuration flag to switch between real and fake capture
+    - Support scripted test scenarios for state machine validation
+    - _Requirements: 9.1, 9.2, 9.3_
+  
+  - [ ] 14.2 (Optional) Write unit tests for fake audio capture
+    - Test fake capture delivers expected audio data
+    - Test configuration switching between real and fake
+    - _Requirements: 9.1, 9.2_
+
+- [ ] 15. Checkpoint - Ensure all tests pass
+  - Run the full defined test suite for current scope, record pass/fail output, and proceed only on green status.
+
+- [ ] 16. Implement property-based tests for state machine parity
+  - [ ] 16.1 (Optional) Write property test for state machine parity
+    - **Property 1: State Machine Parity**
+    - Generate random action sequences and verify Android state matches axolync-browser v1.0.0 baseline
+    - **Validates: Requirements 1.2, 4.1, 4.3**
+  
+  - [ ] 16.2 (Optional) Write property test for state name consistency
+    - **Property 2: State Name Consistency**
+    - Verify all state names match exactly with axolync-browser v1.0.0
+    - **Validates: Requirements 4.4**
+  
+  - [ ] 16.3 (Optional) Write property test for splash screen persistence
+    - **Property 3: Splash Screen Persistence**
+    - Test splash screen remains visible until ready signal or timeout
+    - **Validates: Requirements 2.2**
+
+- [ ] 17. Implement property-based tests for network and offline behavior
+  - [ ] 17.1 (Optional) Write property test for offline feature degradation
+    - **Property 8: Offline Feature Degradation**
+    - Test network-dependent operations fail gracefully when offline
+    - **Validates: Requirements 7.1**
+
+- [ ] 18. Implement property-based tests for audio performance
+  - [ ] 18.1 (Optional) Write property test for audio capture latency bound
+    - **Property 11: Audio Capture Latency Bound**
+    - Measure latency from start action to first chunk available (target ≤150ms)
+    - **Validates: Requirements 8.2, 8.4**
+  
+  - [ ] 18.2 (Optional) Write property test for cold start performance
+    - **Property 12: Cold Start Performance**
+    - Measure cold start to first render (target ≤3s on mid-range 2019+ devices with 4GB RAM)
+    - **Validates: Requirements 8.3, 10.6**
+  
+  - [ ] 18.3 (Optional) Write property test for audio chunk jitter tolerance
+    - **Property 13: Audio Chunk Jitter Tolerance**
+    - Test system tolerates up to 2 consecutive missed chunks
+    - **Validates: Requirements 8.5**
+
+- [ ] 19. Physical device testing and validation
+  - [ ] 19.1 Set up physical device testing environment
+    - Identify target device profile: mid-range Android 2019+ with 4GB RAM
+    - Prepare test devices for audio latency and performance measurements
+    - Document device specifications used for testing
+    - _Requirements: 3.5, 8.6, 8.7, 8.9_
+  - [ ] 19.2 Execute physical device tests
+    - Measure audio capture latency on physical devices (Property 11)
+    - Measure cold start performance on physical devices (Property 12)
+    - Validate audio routing and quality on physical devices
+    - Test lifecycle state preservation under real memory pressure
+    - Document test results and any device-specific issues
+    - _Requirements: 3.5, 8.2, 8.3, 8.6, 8.7, 8.9_
+
+- [ ] 20. Final integration and validation
+  - [ ] 20.1 Build production APK and validate configuration
+    - Build release APK with ProGuard/R8 optimization
+    - Verify remote debugging disabled in production build
+    - Verify all security settings applied correctly
+    - Test APK installation and first-run experience
+    - _Requirements: 11.2_
+  
+  - [ ] 20.2 End-to-end validation with axolync-browser integration
+    - Verify complete plugin pipeline execution (SongSense, SyncEngine, LyricFlow)
+    - Verify Web Workers function correctly
+    - Verify state machine transitions match web baseline
+    - Test complete user flows: permission grant → audio capture → song identification → lyric sync
+    - _Requirements: 1.2, 1.3, 4.1, 4.3, 5.1, 5.2, 5.3, 5.4_
+
+- [ ] 21. Final checkpoint - Ensure all tests pass
+  - Run the full defined test suite for current scope, record pass/fail output, and proceed only on green status.
+
+## Notes
+
+- Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness
+- Each task references specific requirements for traceability
+- Checkpoints ensure incremental validation at key milestones
+- Property tests validate universal correctness properties with minimum 100 iterations
+- Unit tests validate specific examples, edge cases, and integration points
+- Physical device testing is required for audio latency and performance validation (tasks 19.1-19.2)
+- The implementation uses Kotlin for all native Android components
+- The axolync-browser submodule remains the authoritative source - no modification of web app code
+- All property tests must include comment tags: `// Feature: android-apk-wrapper, Property {number}: {property_text}`

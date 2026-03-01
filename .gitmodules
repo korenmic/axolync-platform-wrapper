@@ -1,0 +1,4 @@
+[submodule "axolync-browser"]
+	path = axolync-browser
+	url = https://github.com/axolync/axolync-browser.git
+	branch = v1.0.0
