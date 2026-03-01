@@ -322,7 +322,7 @@ The implementation uses Kotlin for all native Android components and integrates 
     - Test complete user flows: permission grant → audio capture → song identification → lyric sync
     - _Requirements: 1.2, 1.3, 4.1, 4.3, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 21. Final checkpoint - Ensure all tests pass
+- [x] 21. Final checkpoint - Ensure all tests pass
   - Run the full defined test suite for current scope, record pass/fail output, and proceed only on green status.
 
 ## Notes
