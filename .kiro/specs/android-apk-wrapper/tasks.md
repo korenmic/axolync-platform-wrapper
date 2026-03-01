@@ -97,7 +97,7 @@ The implementation uses Kotlin for all native Android components and integrates 
   - Run the full defined test suite for current scope, record pass/fail output, and proceed only on green status.
 
 - [ ] 7. Implement NativeBridge JavaScript interface
-  - [ ] 7.1 Create NativeBridge class with JavaScript interface methods
+  - [x] 7.1 Create NativeBridge class with JavaScript interface methods
     - Implement @JavascriptInterface methods: startAudioCapture(), stopAudioCapture()
     - Implement checkMicrophonePermission(), requestMicrophonePermission(), openAppSettings()
     - Implement getNetworkStatus() returning JSON with online status
@@ -106,7 +106,7 @@ The implementation uses Kotlin for all native Android components and integrates 
     - All methods return JSON strings for security
     - _Requirements: 3.3, 3.4, 7.3_
   
-  - [ ] 7.2 Implement native-to-web communication methods
+  - [x] 7.2 Implement native-to-web communication methods
     - Implement deliverAudioChunk() using evaluateJavascript to call window.AxolyncNative.onAudioChunk()
     - Implement notifyLifecycleEvent() to call window.AxolyncNative.onLifecycle()
     - Implement notifyPermissionResult() to call window.AxolyncNative.onPermissionResult()
