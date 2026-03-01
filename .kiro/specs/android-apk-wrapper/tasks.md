@@ -17,7 +17,7 @@ The implementation uses Kotlin for all native Android components and integrates 
   - Set up basic project structure: activities, services, utils packages
   - _Requirements: 1.1, 1.4_
 
-- [ ] 1.5 Implement ServerManager and LocalHttpServer
+- [x] 1.5 Implement ServerManager and LocalHttpServer
   - Create ServerManager singleton with async startup on background thread
   - Implement LocalHttpServer with NanoHTTPD (hardened, SPA fallback)
   - Use canonical URL http://localhost:<port>/ (not 127.0.0.1)

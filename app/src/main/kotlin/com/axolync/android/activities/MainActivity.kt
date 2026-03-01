@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -11,9 +12,11 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.axolync.android.BuildConfig
 import com.axolync.android.R
 import com.axolync.android.bridge.NativeBridge
+import com.axolync.android.server.ServerManager
 import com.axolync.android.services.AudioCaptureService
 import com.axolync.android.services.LifecycleCoordinator
 import com.axolync.android.services.PermissionManager
@@ -24,7 +27,9 @@ import com.axolync.android.utils.PluginManager
  * MainActivity hosts the WebView and coordinates native services.
  * This is the primary activity that runs the Axolync web application.
  * 
- * Requirements: 1.2, 1.3, 2.1, 2.4
+ * Uses Android SplashScreen API to show splash while embedded server starts.
+ * 
+ * Requirements: 1.2, 1.3, 2.1, 2.4, 6.1, 6.2, 11.3, 11.4
  */
 class MainActivity : AppCompatActivity() {
 
@@ -42,10 +47,43 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen and keep it visible until server ready
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition {
+            val serverManager = ServerManager.getInstance(this)
+            // Keep splash visible while STARTING
+            // Dismiss when READY or FAILED
+            serverManager.getServerState() == ServerManager.ServerState.STARTING
+        }
+        
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webview)
+        
+        // Check server state (STATE-AWARE, no recreate loop)
+        val serverManager = ServerManager.getInstance(this)
+        when (serverManager.getServerState()) {
+            ServerManager.ServerState.STARTING -> {
+                // Still starting - splash should handle this
+                // This case should not happen if splash condition works correctly
+                // If it does happen, just log and wait (splash will eventually dismiss)
+                Log.w(TAG, "Server still starting when MainActivity.onCreate() called - splash should be visible")
+                // DO NOT call recreate() or show dialog - just return
+                // Splash will dismiss when state changes
+                return
+            }
+            ServerManager.ServerState.FAILED -> {
+                // Server failed - show error
+                Log.e(TAG, "Server failed to start")
+                showServerFailedError()
+                return
+            }
+            ServerManager.ServerState.READY -> {
+                // Server ready - proceed normally
+                Log.i(TAG, "Server ready, proceeding with initialization")
+            }
+        }
         
         // Initialize all services
         initializeServices()
@@ -58,11 +96,8 @@ class MainActivity : AppCompatActivity() {
             lifecycleCoordinator.restoreState(it)
         }
         
-        // Load web app
+        // Load web app from localhost server
         loadWebApp()
-        
-        // Signal SplashActivity that we're ready
-        SplashActivity.signalReady()
     }
 
     /**
@@ -131,9 +166,8 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             databaseEnabled = true
             
-            // Security: Allow file access ONLY for bundled assets (Requirement 11.6, 11.8)
-            // This is required to load file:///android_asset/ content
-            allowFileAccess = true
+            // Security: Disable file access (we use HTTP server now)
+            allowFileAccess = false
             allowContentAccess = false
             @Suppress("DEPRECATION")
             allowFileAccessFromFileURLs = false
@@ -168,11 +202,11 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest
             ): Boolean {
                 val url = request.url.toString()
-                return if (url.startsWith("file:///android_asset/") || isAllowedOrigin(request.url)) {
+                return if (isAllowedOrigin(request.uri)) {
                     false  // Allow navigation
                 } else {
                     // Block untrusted navigation
-                    android.util.Log.w(TAG, "Blocked navigation to untrusted origin: $url")
+                    Log.w(TAG, "Blocked navigation to untrusted origin: $url")
                     true
                 }
             }
@@ -188,13 +222,13 @@ class MainActivity : AppCompatActivity() {
             ): WebResourceResponse? {
                 val url = request.url.toString()
                 
-                // Allow bundled assets and trusted origins
-                if (url.startsWith("file:///android_asset/") || isAllowedOrigin(request.url)) {
+                // Allow localhost server and trusted origins
+                if (isAllowedOrigin(request.url)) {
                     return super.shouldInterceptRequest(view, request)
                 }
                 
                 // Block untrusted subresource requests
-                android.util.Log.w(TAG, "Blocked subresource request to untrusted origin: $url")
+                Log.w(TAG, "Blocked subresource request to untrusted origin: $url")
                 return WebResourceResponse("text/plain", "UTF-8", null)
             }
         }
@@ -202,15 +236,26 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Strict origin validation with exact scheme + host + port matching.
+     * Includes localhost server origin from ServerManager.
      * Substring host matching is explicitly avoided to prevent bypass attacks.
      * Requirements: 11.6, 11.8
      */
     private fun isAllowedOrigin(uri: Uri): Boolean {
-        // Define allowed origins with explicit scheme, host, and port
-        val allowedOrigins = listOf<Triple<String, String, Int>>(
-            // Example: Triple("https", "api.axolync.com", 443)
-            // Add trusted origins as needed for provider endpoints
-        )
+        val allowedOrigins = mutableListOf<Triple<String, String, Int>>()
+        
+        // Add localhost server origin from ServerManager (single source of truth)
+        // CANONICAL: Use 'localhost' hostname (not 127.0.0.1)
+        val serverManager = ServerManager.getInstance(this)
+        serverManager.getBaseUrl()?.let { baseUrl ->
+            val serverUri = Uri.parse(baseUrl)
+            val port = serverUri.port.takeIf { it != -1 } ?: 80
+            // Allow both localhost and 127.0.0.1 for compatibility
+            allowedOrigins.add(Triple("http", "localhost", port))
+            allowedOrigins.add(Triple("http", "127.0.0.1", port))
+        }
+        
+        // Add external API origins as needed (explicitly documented)
+        // Example: allowedOrigins.add(Triple("https", "api.axolync.com", 443))
 
         val scheme = uri.scheme ?: return false
         val host = uri.host ?: return false
@@ -232,11 +277,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Load the bundled web application from assets.
+     * Load the bundled web application from localhost HTTP server.
+     * Uses canonical URL with 'localhost' hostname (not 127.0.0.1).
      * Requirements: 6.1, 6.3, 6.4
      */
     private fun loadWebApp() {
-        webView.loadUrl("file:///android_asset/axolync-browser/index.html")
+        val serverManager = ServerManager.getInstance(this)
+        val baseUrl = serverManager.getBaseUrl()
+        
+        if (baseUrl == null) {
+            Log.e(TAG, "Cannot load web app: server base URL is null")
+            showServerFailedError()
+            return
+        }
+        
+        val url = "$baseUrl/index.html"
+        Log.i(TAG, "Loading web app from $url (canonical localhost URL)")
+        webView.loadUrl(url)
+    }
+
+    /**
+     * Show error dialog when server fails to start.
+     */
+    private fun showServerFailedError() {
+        val serverManager = ServerManager.getInstance(this)
+        val reason = serverManager.getFailureReason() ?: "Unknown error"
+        val metrics = serverManager.getMetrics()
+        
+        val message = buildString {
+            append("Failed to start internal server:\n")
+            append("$reason\n\n")
+            append("Category: ${metrics.failureCategory}\n")
+            if (metrics.startDurationMs != null) {
+                append("Duration: ${metrics.startDurationMs}ms\n")
+            }
+            append("\nPlease restart the app.")
+        }
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Server Error")
+            .setMessage(message)
+            .setPositiveButton("Exit") { _, _ -> finish() }
+            .setCancelable(false)
+            .show()
     }
 
     override fun onResume() {
@@ -257,6 +340,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        
+        // DO NOT stop server here - lifetime equals process lifetime
+        
         networkMonitor.unregisterCallback()
         audioCaptureService.stopCapture()
         webView.destroy()
