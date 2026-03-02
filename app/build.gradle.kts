@@ -102,6 +102,20 @@ dependencies {
 }
 
 // Task to copy built axolync-browser assets to app/src/main/assets/axolync-browser/
+tasks.register<Exec>("buildAxolyncBrowserDist") {
+    description = "Build axolync-browser dist before packaging Android assets"
+    group = "build"
+    workingDir = file("${rootProject.projectDir}/axolync-browser")
+    commandLine("npm", "run", "build")
+
+    inputs.file(file("${rootProject.projectDir}/axolync-browser/package.json"))
+    inputs.file(file("${rootProject.projectDir}/axolync-browser/package-lock.json"))
+    inputs.file(file("${rootProject.projectDir}/axolync-browser/index.html"))
+    inputs.dir(file("${rootProject.projectDir}/axolync-browser/src"))
+    inputs.dir(file("${rootProject.projectDir}/axolync-browser/demo"))
+    outputs.dir(file("${rootProject.projectDir}/axolync-browser/dist"))
+}
+
 tasks.register<Copy>("copyAxolyncBrowserAssets") {
     description = "Copy built axolync-browser assets to Android assets directory"
     group = "build"
@@ -149,4 +163,9 @@ tasks.register<Copy>("copyAxolyncBrowserAssets") {
 // Make preBuild depend on copying assets
 tasks.named("preBuild") {
     dependsOn("copyAxolyncBrowserAssets")
+}
+
+// Ensure copied assets always come from a freshly built browser dist.
+tasks.named("copyAxolyncBrowserAssets") {
+    dependsOn("buildAxolyncBrowserDist")
 }
