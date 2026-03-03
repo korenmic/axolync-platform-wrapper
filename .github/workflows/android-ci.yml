@@ -14,11 +14,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Checkout axolync-browser
-      uses: actions/checkout@v4
-      with:
-        repository: korenmic/axolync-browser
-        path: axolync-browser
+    - name: Clone axolync-browser
+      run: git clone --depth 1 https://github.com/korenmic/axolync-browser.git axolync-browser
     
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -71,11 +68,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Checkout axolync-browser
-      uses: actions/checkout@v4
-      with:
-        repository: korenmic/axolync-browser
-        path: axolync-browser
+    - name: Clone axolync-browser
+      run: git clone --depth 1 https://github.com/korenmic/axolync-browser.git axolync-browser
     
     - name: Set up Node.js
       uses: actions/setup-node@v4
