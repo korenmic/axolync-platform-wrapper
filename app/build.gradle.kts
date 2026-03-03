@@ -40,6 +40,34 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("diagNoNotif") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".diag.nonotif"
+            versionNameSuffix = "-diag-nonotif"
+            isDebuggable = true
+            matchingFallbacks += listOf("debug")
+        }
+        create("diagNoMic") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".diag.nomic"
+            versionNameSuffix = "-diag-nomic"
+            isDebuggable = true
+            matchingFallbacks += listOf("debug")
+        }
+        create("diagNoNet") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".diag.nonet"
+            versionNameSuffix = "-diag-nonet"
+            isDebuggable = true
+            matchingFallbacks += listOf("debug")
+        }
+        create("diagMinimal") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".diag.minimal"
+            versionNameSuffix = "-diag-minimal"
+            isDebuggable = true
+            matchingFallbacks += listOf("debug")
+        }
     }
 
     buildFeatures {
@@ -164,6 +192,17 @@ tasks.register("copyAxolyncBrowserAssets") {
                 from(sourceRoot)
                 into(targetDir)
             }
+            // Keep demo audio/lrc assets bundled for parity with legacy installable debug builds.
+            val legacyDemoDir = file("${rootProject.projectDir}/axolync-browser/demo/assets")
+            if (legacyDemoDir.exists()) {
+                copy {
+                    from(legacyDemoDir) {
+                        include("*.ogg")
+                        include("*.lrc")
+                    }
+                    into(file("${targetDir.absolutePath}/demo/assets"))
+                }
+            }
         } else {
             val distDir = file("${rootProject.projectDir}/axolync-browser/dist")
             val indexHtml = file("${rootProject.projectDir}/axolync-browser/index.html")
@@ -190,7 +229,6 @@ tasks.register("copyAxolyncBrowserAssets") {
                 from("${rootProject.projectDir}/axolync-browser/demo") {
                     include("plugins/*.js")
                     include("assets/*.ogg")
-                    include("assets/*.wav")
                     include("assets/*.lrc")
                     into("demo")
                 }
