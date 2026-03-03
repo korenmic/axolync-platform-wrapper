@@ -1,5 +1,8 @@
 package com.axolync.android.bridge
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -17,6 +20,7 @@ import org.json.JSONObject
  * Requirements: 3.3, 3.4, 7.3, 10.1, 10.2
  */
 class NativeBridge(
+    private val context: Context,
     private val webView: WebView,
     private val audioCaptureService: AudioCaptureService,
     private val permissionManager: PermissionManager,
@@ -147,6 +151,62 @@ class NativeBridge(
     }
 
     /**
+     * Returns status-bar notification listener access state required by the Shazam adapter.
+     */
+    @JavascriptInterface
+    fun getStatusBarAccessStatus(): String {
+        return JSONObject().apply {
+            put("enabled", isNotificationAccessEnabled())
+        }.toString()
+    }
+
+    /**
+     * Opens Android notification listener settings so user can grant status-bar access.
+     */
+    @JavascriptInterface
+    fun requestStatusBarAccessPermission() {
+        mainHandler.post {
+            try {
+                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to open notification listener settings", e)
+            }
+        }
+    }
+
+    /**
+     * Returns latest song-like status-bar signal captured by native notification listener.
+     * Confidence is always 1.0 for direct status-bar matches.
+     */
+    @JavascriptInterface
+    fun getAutoShazamStatusBarMatch(): String {
+        val enabled = isNotificationAccessEnabled()
+        val match = StatusBarSongSignalStore.latestSignal()
+        return JSONObject().apply {
+            put("enabled", enabled)
+            if (match != null) {
+                put(
+                    "match",
+                    JSONObject().apply {
+                        put("songId", "${match.sourcePackage}:${match.title}:${match.artist ?: ""}")
+                        put("title", match.title)
+                        put("artist", match.artist ?: "")
+                        put("confidence", 1.0)
+                        put("source", "statusbar_shazam")
+                        put("capturedAtMs", match.capturedAtMs)
+                        put("sourcePackage", match.sourcePackage)
+                    }
+                )
+            } else {
+                put("match", JSONObject.NULL)
+            }
+        }.toString()
+    }
+
+    /**
      * Called by web application when initialization is complete.
      * No longer needed with Android SplashScreen API (splash dismisses automatically).
      * Kept for backward compatibility with web app.
@@ -232,5 +292,13 @@ class NativeBridge(
                 Log.e(TAG, "Failed to notify permission result", e)
             }
         }
+    }
+
+    private fun isNotificationAccessEnabled(): Boolean {
+        val enabledListeners = Settings.Secure.getString(
+            context.contentResolver,
+            "enabled_notification_listeners"
+        ) ?: return false
+        return enabledListeners.contains(context.packageName, ignoreCase = true)
     }
 }

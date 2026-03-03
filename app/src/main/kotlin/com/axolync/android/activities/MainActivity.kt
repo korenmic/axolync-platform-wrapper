@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.MotionEvent
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -151,6 +152,7 @@ class MainActivity : AppCompatActivity() {
         
         // Initialize NativeBridge with all dependencies
         nativeBridge = NativeBridge(
+            context = this,
             webView = webView,
             audioCaptureService = audioCaptureService,
             permissionManager = permissionManager,
@@ -212,12 +214,25 @@ class MainActivity : AppCompatActivity() {
             // Cache configuration
             cacheMode = WebSettings.LOAD_DEFAULT
             
-            // Enable viewport and zoom for responsive web app
+            // Keep responsive layout while locking browser/page zoom at native level.
             useWideViewPort = true
             loadWithOverviewMode = true
-            
+            setSupportZoom(false)
+            builtInZoomControls = false
+            displayZoomControls = false
+            textZoom = 100
+
             // Enable media playback
             mediaPlaybackRequiresUserGesture = false
+        }
+
+        // Defensive pinch block: consume multi-touch gestures before WebView scaling logic.
+        webView.setOnTouchListener { _, motionEvent ->
+            if (motionEvent.actionMasked == MotionEvent.ACTION_POINTER_DOWN || motionEvent.pointerCount > 1) {
+                true
+            } else {
+                false
+            }
         }
 
         // Register NativeBridge as JavaScript interface

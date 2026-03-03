@@ -365,6 +365,20 @@ The implementation uses Kotlin for all native Android components and integrates 
     - Add localhost cleartext verification instrumentation test
     - _Requirements: 11.3_
 
+- [x] 23. Android gesture lock + status-bar adapter bridge foundations
+  - [x] 23.1 Disable WebView/browser pinch zoom on Android while preserving fixed text scale
+    - Explicitly disable WebView zoom controls/support in `MainActivity` settings
+    - Keep text zoom fixed at 100%
+    - Ensure pinch gestures do not scale the page
+  - [x] 23.2 Expose status-bar song signal bridge APIs for plugin-side consumption
+    - Add native notification-listener service for capturing latest song-like status entries
+    - Add `AndroidBridge` JS APIs to check/request status-bar access and fetch latest match payload
+    - Add manifest wiring for notification listener service
+  - [x] 23.3 Add focused unit tests for new native behavior
+    - Add test coverage for notification payload extraction/store behavior
+    - Add static guard test that `MainActivity` keeps zoom support disabled
+    - _Requirements: 3.1, 3.2, 6.1, 11.3_
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness
