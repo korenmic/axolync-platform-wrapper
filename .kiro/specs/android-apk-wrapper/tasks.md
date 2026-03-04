@@ -402,8 +402,8 @@ The implementation uses Kotlin for all native Android components and integrates 
     - Disable WebView long-click interaction and touch callout behavior for wrapped runtime.
     - Keep lyric drag and double-tap gesture pipeline functional.
   - [x] 26.2 Rewire notification access flow to app-scoped listener settings
-    - Mark notification listener service exported for system binding visibility.
-    - Prefer app-scoped notification listener detail settings intent with fallback to full listener settings screen.
+    - Mark notification listener service as non-exported with required bind permission for system-only binding.
+    - Use `Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS` with `Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME` and fallback to full listener settings screen.
   - [x] 26.3 Add regression guards for manifest and native bridge wiring
     - Add static tests for service export/permission wiring and intent fallback coverage markers.
 

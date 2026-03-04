@@ -1,7 +1,9 @@
 package com.axolync.android.bridge
 
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +12,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import com.axolync.android.services.AudioCaptureService
 import com.axolync.android.services.PermissionManager
+import com.axolync.android.services.StatusBarSongSignalService
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -167,13 +170,19 @@ class NativeBridge(
     fun requestStatusBarAccessPermission() {
         mainHandler.post {
             try {
-                // Prefer app-scoped details page when available so Axolync appears directly.
-                val detailIntent = Intent("android.settings.NOTIFICATION_LISTENER_DETAIL_SETTINGS").apply {
-                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                val resolver = context.packageManager
+                val listenerComponent = ComponentName(context, StatusBarSongSignalService::class.java)
+                val detailIntent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
+                    // API 30+: Settings expects a flattened ComponentName string.
+                    putExtra(
+                        Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                        listenerComponent.flattenToString()
+                    )
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                val resolver = context.packageManager
-                if (detailIntent.resolveActivity(resolver) != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    detailIntent.resolveActivity(resolver) != null
+                ) {
                     context.startActivity(detailIntent)
                     return@post
                 }
