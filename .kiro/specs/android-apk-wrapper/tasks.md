@@ -397,11 +397,11 @@ The implementation uses Kotlin for all native Android components and integrates 
     - Add/update test proving zoom controls remain disabled and WebView touch lock wiring remains active.
     - Fix Android CI workflow setup-node/cache path reliability for this repository layout.
 
-- [x] 26. Restore notification-access visibility and disable long-press text selection in wrapped WebView
+- [ ] 26. Restore notification-access visibility and disable long-press text selection in wrapped WebView
   - [x] 26.1 Disable Android long-press text selection menu while preserving JS touch gestures
     - Disable WebView long-click interaction and touch callout behavior for wrapped runtime.
     - Keep lyric drag and double-tap gesture pipeline functional.
-  - [x] 26.2 Rewire notification access flow to app-scoped listener settings
+  - [ ] 26.2 Rewire notification access flow to app-scoped listener settings
     - Mark notification listener service as non-exported with required bind permission for system-only binding.
     - Use `Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS` with `Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME` and fallback to full listener settings screen.
   - [x] 26.3 Add regression guards for manifest and native bridge wiring
