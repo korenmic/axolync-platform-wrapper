@@ -47,6 +47,13 @@ android {
             isDebuggable = true
             matchingFallbacks += listOf("debug")
         }
+        create("diagNoNotifRelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".diag.nonotif"
+            versionNameSuffix = "-diag-nonotif-release"
+            isDebuggable = false
+            matchingFallbacks += listOf("diagNoNotif", "release")
+        }
         create("diagNoMic") {
             initWith(getByName("debug"))
             applicationIdSuffix = ".diag.nomic"
