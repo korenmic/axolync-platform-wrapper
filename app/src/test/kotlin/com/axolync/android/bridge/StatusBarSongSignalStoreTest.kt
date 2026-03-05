@@ -8,28 +8,43 @@ import org.junit.Test
 class StatusBarSongSignalStoreTest {
 
     @Test
-    fun `parses shazam style text as artist-title`() {
+    fun `parses shazam auto mode now-playing text`() {
         val signal = parseStatusBarSongSignal(
-            titleRaw = "Auto Shazam",
-            textRaw = "Daft Punk - Harder Better Faster Stronger",
+            titleRaw = "Auto Shazam is on",
+            textRaw = "Now playing Even Flow by Pearl Jam",
             subTextRaw = null,
             sourcePackage = "com.shazam.android",
             capturedAtMs = 1234L
         )
 
         assertNotNull(signal)
-        assertEquals("Harder Better Faster Stronger", signal?.title)
-        assertEquals("Daft Punk", signal?.artist)
+        assertEquals("Even Flow", signal?.title)
+        assertEquals("Pearl Jam", signal?.artist)
         assertEquals("com.shazam.android", signal?.sourcePackage)
     }
 
     @Test
-    fun `returns null when title and text are both empty`() {
+    fun `parses shazam song card title and artist`() {
         val signal = parseStatusBarSongSignal(
-            titleRaw = "   ",
-            textRaw = "",
+            titleRaw = "Alive (Live)",
+            textRaw = "Pearl Jam",
             subTextRaw = null,
-            sourcePackage = "com.example",
+            sourcePackage = "com.shazam.android",
+            capturedAtMs = 1234L
+        )
+
+        assertNotNull(signal)
+        assertEquals("Alive (Live)", signal?.title)
+        assertEquals("Pearl Jam", signal?.artist)
+    }
+
+    @Test
+    fun `returns null for non shazam package to avoid false positives`() {
+        val signal = parseStatusBarSongSignal(
+            titleRaw = "Notification",
+            textRaw = "Tap to open",
+            subTextRaw = null,
+            sourcePackage = "com.google.android.gm",
             capturedAtMs = 1234L
         )
         assertNull(signal)
