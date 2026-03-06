@@ -27,6 +27,8 @@ data class ParsedStatusBarSongSignal(
 )
 
 object StatusBarSongSignalStore {
+    private const val MAX_SIGNAL_AGE_MS = 5 * 60 * 1000L
+
     @Volatile
     private var latest: StatusBarSongSignal? = null
     @Volatile
@@ -36,13 +38,19 @@ object StatusBarSongSignalStore {
 
     @Synchronized
     fun update(signal: StatusBarSongSignal) {
+        pruneExpiredLocked()
+        if (!isWithinRetentionWindow(signal.capturedAtMs)) return
         val current = latest
         if (current == null || signal.capturedAtMs >= current.capturedAtMs) {
             latest = signal
         }
     }
 
-    fun latestSignal(): StatusBarSongSignal? = latest
+    @Synchronized
+    fun latestSignal(): StatusBarSongSignal? {
+        pruneExpiredLocked()
+        return latest
+    }
 
     @Synchronized
     fun clear() {
@@ -60,6 +68,8 @@ object StatusBarSongSignalStore {
     @Synchronized
     fun appendDebugEntry(entry: StatusBarNotificationDebugEntry) {
         if (!debugCaptureEnabled) return
+        pruneExpiredLocked()
+        if (!isWithinRetentionWindow(entry.capturedAtMs)) return
         if (debugEntries.size >= MAX_DEBUG_ENTRIES) {
             debugEntries.removeAt(0)
         }
@@ -68,6 +78,7 @@ object StatusBarSongSignalStore {
 
     @Synchronized
     fun debugEntriesSnapshot(limit: Int = 200): List<StatusBarNotificationDebugEntry> {
+        pruneExpiredLocked()
         if (limit <= 0) return emptyList()
         return debugEntries.takeLast(limit)
     }
@@ -75,6 +86,25 @@ object StatusBarSongSignalStore {
     @Synchronized
     fun clearDebugEntries() {
         debugEntries.clear()
+    }
+
+    @Synchronized
+    fun pruneExpired(nowMs: Long = System.currentTimeMillis()) {
+        pruneExpiredLocked(nowMs)
+    }
+
+    fun isWithinRetentionWindow(capturedAtMs: Long, nowMs: Long = System.currentTimeMillis()): Boolean {
+        if (capturedAtMs <= 0L) return false
+        val ageMs = nowMs - capturedAtMs
+        return ageMs in 0..MAX_SIGNAL_AGE_MS
+    }
+
+    private fun pruneExpiredLocked(nowMs: Long = System.currentTimeMillis()) {
+        val current = latest
+        if (current != null && !isWithinRetentionWindow(current.capturedAtMs, nowMs)) {
+            latest = null
+        }
+        debugEntries.removeAll { entry -> !isWithinRetentionWindow(entry.capturedAtMs, nowMs) }
     }
 }
 

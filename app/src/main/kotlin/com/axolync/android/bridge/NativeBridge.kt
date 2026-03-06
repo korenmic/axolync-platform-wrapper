@@ -39,6 +39,11 @@ class NativeBridge(
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    init {
+        // Defensive cleanup for wrapper restarts where process/service can retain stale memory.
+        StatusBarSongSignalStore.pruneExpired()
+    }
+
     /**
      * Start audio capture from microphone.
      * Returns JSON with success status.
@@ -274,6 +279,7 @@ class NativeBridge(
      */
     @JavascriptInterface
     fun getAutoShazamStatusBarMatch(): String {
+        StatusBarSongSignalStore.pruneExpired()
         val enabled = isNotificationAccessEnabled()
         val match = StatusBarSongSignalStore.latestSignal()
         return JSONObject().apply {
@@ -311,6 +317,7 @@ class NativeBridge(
      */
     @JavascriptInterface
     fun getStatusBarDebugCaptureLog(): String {
+        StatusBarSongSignalStore.pruneExpired()
         val rows = StatusBarSongSignalStore.debugEntriesSnapshot(limit = 400)
         return JSONObject().apply {
             put("debugBuild", BuildConfig.DEBUG)

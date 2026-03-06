@@ -19,6 +19,9 @@ class StatusBarSongSignalService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try {
+            if (!StatusBarSongSignalStore.isWithinRetentionWindow(sbn.postTime)) {
+                return
+            }
             val extras = sbn.notification.extras ?: return
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
