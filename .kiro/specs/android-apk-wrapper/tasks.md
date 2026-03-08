@@ -431,6 +431,13 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 29.3 Add regression coverage
     - Cover native debug-archive save behavior and worker-asset MIME resolution for packaged browser assets.
 
+- [x] 30. Sync checked-in wrapped browser assets to the current bridge-worker packaging contract
+  - [x] 30.1 Refresh checked-in `app/src/main/assets/axolync-browser/` from the current browser build output
+    - Ensure packaged worker entrypoints are available under `/workers/*.js` alongside the current main bundle.
+    - Remove dependence on stale checked-in raw `.ts` bridge-worker assets.
+  - [x] 30.2 Add regression coverage
+    - Add a static/native guard that the checked-in wrapped browser asset tree contains the expected packaged worker JavaScript entrypoints.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness

@@ -247,6 +247,15 @@ tasks.register("copyAxolyncBrowserAssets") {
         if (!preinstalledManifest.exists()) {
             logger.lifecycle("No preinstalled plugin manifest found in copied browser assets (${preinstalledManifest.absolutePath})")
         }
+
+        fileTree("${targetDir.absolutePath}/assets").matching {
+            include("lyricflowBridgeWorker-*.ts")
+            include("syncengineBridgeWorker-*.ts")
+        }.files.forEach { staleWorker ->
+            if (staleWorker.delete()) {
+                logger.lifecycle("Removed stale raw bridge worker asset ${staleWorker.relativeTo(projectDir)}")
+            }
+        }
     }
 }
 
