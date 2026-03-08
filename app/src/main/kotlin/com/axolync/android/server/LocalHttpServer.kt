@@ -29,6 +29,7 @@ class LocalHttpServer(
             ".html" to "text/html",
             ".js" to "application/javascript",
             ".mjs" to "application/javascript",
+            ".ts" to "application/javascript",
             ".css" to "text/css",
             ".json" to "application/json",
             ".map" to "application/json",

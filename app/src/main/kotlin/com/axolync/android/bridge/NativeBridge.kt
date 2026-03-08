@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ContentValues
+import android.media.MediaScannerConnection
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -381,13 +382,23 @@ class NativeBridge(
                 context.contentResolver.update(uri, values, null, null)
                 uri
             } else {
-                val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                    ?: throw IllegalStateException("External downloads directory unavailable")
+                val downloadsRoot = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    ?: throw IllegalStateException("Public downloads directory unavailable")
+                val downloadsDir = File(downloadsRoot, "Axolync")
+                if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+                    throw IllegalStateException("Failed to create public downloads directory")
+                }
                 val target = File(downloadsDir, safeName)
                 target.outputStream().use { output ->
                     output.write(bytes)
                     output.flush()
                 }
+                MediaScannerConnection.scanFile(
+                    context,
+                    arrayOf(target.absolutePath),
+                    arrayOf("application/zip"),
+                    null
+                )
                 Uri.fromFile(target)
             }
 

@@ -16,5 +16,7 @@ class NativeBridgeDebugArchiveSaveTest {
         assertTrue(source.contains("put(\"success\", true)"))
         assertTrue(source.contains("put(\"uri\", savedUri.toString())"))
         assertTrue(source.contains("put(\"success\", false)"))
+        assertTrue(source.contains("Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)"))
+        assertTrue(source.contains("MediaScannerConnection.scanFile"))
     }
 }

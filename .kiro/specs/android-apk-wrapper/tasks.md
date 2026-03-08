@@ -422,13 +422,13 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 28.2 Add regression coverage
     - Add focused native/browser bridge coverage that proves Back dispatches overlay-close behavior before allowing app exit.
 
-- [ ] 29. Restore wrapped-runtime reliability for debug archive saves and bridge workers
-  - [ ] 29.1 Fix Android debug archive downloads so the browser `Download` button produces a saved file
+- [x] 29. Restore wrapped-runtime reliability for debug archive saves and bridge workers
+  - [x] 29.1 Fix Android debug archive downloads so the browser `Download` button produces a saved file
     - Keep the save path user-visible and return structured success/failure data to the web app.
-  - [ ] 29.2 Serve packaged bridge-worker assets with a JavaScript MIME type
+  - [x] 29.2 Serve packaged bridge-worker assets with a JavaScript MIME type
     - Prevent Android WebView worker bootstrap crashes caused by packaged bridge-worker assets using the `.ts` extension.
     - Add a regression guard for the packaged worker MIME resolution path.
-  - [ ] 29.3 Add regression coverage
+  - [x] 29.3 Add regression coverage
     - Cover native debug-archive save behavior and worker-asset MIME resolution for packaged browser assets.
 
 ## Notes
