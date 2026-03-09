@@ -444,6 +444,14 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 31.2 Add regression coverage
     - Keep the packaged-worker asset guard green after the stable `/workers/*.js` entrypoints are generated during asset sync.
 
+- [x] 32. Align wrapped-runtime browser asset sync with real browser build outputs
+  - [x] 32.1 Reproduce stale/raw worker asset packaging in Android local asset sync
+    - Add a regression proving Android asset sync must consume executable JavaScript bridge workers rather than copied raw `.ts` worker assets.
+  - [x] 32.2 Run the same browser bundle build steps the platform actually depends on and consume the generated worker assets
+    - Keep Android local asset sync aligned with the browser repo's real build outputs instead of relying on stale dist state or hashed TypeScript worker placeholders.
+  - [x] 32.3 Add/keep regression coverage
+    - Keep the wrapped browser asset tree guard green for executable bridge worker entrypoints after local asset sync.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness

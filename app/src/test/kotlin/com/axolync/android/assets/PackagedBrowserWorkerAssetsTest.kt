@@ -18,12 +18,17 @@ class PackagedBrowserWorkerAssetsTest {
 
         val lyricflowWorker = File(browserAssetsRoot, "workers/lyricflowBridgeWorker.js")
         val syncengineWorker = File(browserAssetsRoot, "workers/syncengineBridgeWorker.js")
-        val staleLyricflowTsWorker = File(browserAssetsRoot, "assets/lyricflowBridgeWorker-DLMPdRSz.ts")
-        val staleSyncengineTsWorker = File(browserAssetsRoot, "assets/syncengineBridgeWorker-Cb95hvyQ.ts")
+        val staleTsWorkers = browserAssetsRoot.resolve("assets").listFiles()?.filter {
+            it.name.startsWith("lyricflowBridgeWorker-") && it.name.endsWith(".ts")
+                || it.name.startsWith("syncengineBridgeWorker-") && it.name.endsWith(".ts")
+        }.orEmpty()
 
         assertTrue(lyricflowWorker.exists())
         assertTrue(syncengineWorker.exists())
-        assertFalse(staleLyricflowTsWorker.exists())
-        assertFalse(staleSyncengineTsWorker.exists())
+        assertFalse(lyricflowWorker.readText().contains("interface BridgeWorkerMessage"))
+        assertFalse(syncengineWorker.readText().contains("interface BridgeWorkerMessage"))
+        assertFalse(lyricflowWorker.readText().contains("export {};"))
+        assertFalse(syncengineWorker.readText().contains("export {};"))
+        assertTrue(staleTsWorkers.isEmpty())
     }
 }

@@ -1,28 +1,28 @@
 {
   "plugins": [
     {
-      "id": "lyricflow-bridge",
-      "name": "LyricFlow Bridge Plugin",
-      "version": "0.2.0",
-      "type": "LyricFlow",
-      "url": "/plugins/preinstalled/lyricflow-bridge.zip",
-      "description": "Preinstalled LyricFlow plugin"
-    },
-    {
       "id": "songsense-bridge",
-      "name": "SongSense Bridge Plugin",
+      "name": "SongSense Bridge",
       "version": "0.3.0",
       "type": "SongSense",
       "url": "/plugins/preinstalled/songsense-bridge.zip",
-      "description": "Preinstalled SongSense plugin"
+      "description": "Preinstalled SongSense bridge bundle backed by the real SongSense backend."
     },
     {
       "id": "syncengine-bridge",
-      "name": "SyncEngine Bridge Plugin",
-      "version": "0.1.1",
+      "name": "SyncEngine Bridge",
+      "version": "0.1.0",
       "type": "SyncEngine",
       "url": "/plugins/preinstalled/syncengine-bridge.zip",
-      "description": "Preinstalled SyncEngine plugin"
+      "description": "Preinstalled SyncEngine bridge bundle backed by the real SyncEngine backend."
+    },
+    {
+      "id": "lyricflow-bridge",
+      "name": "LyricFlow Bridge",
+      "version": "0.2.0",
+      "type": "LyricFlow",
+      "url": "/plugins/preinstalled/lyricflow-bridge.zip",
+      "description": "Preinstalled LyricFlow bridge bundle backed by the real LyricFlow backend."
     }
   ]
 }

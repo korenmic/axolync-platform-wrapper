@@ -141,7 +141,7 @@ tasks.register<Exec>("buildAxolyncBrowserDist") {
     description = "Build axolync-browser dist before packaging Android assets"
     group = "build"
     workingDir = file("${rootProject.projectDir}/axolync-browser")
-    commandLine("npm", "run", "build")
+    commandLine("bash", "-lc", "npm run build && npx vite build")
 
     inputs.file(file("${rootProject.projectDir}/axolync-browser/package.json"))
     inputs.file(file("${rootProject.projectDir}/axolync-browser/package-lock.json"))
@@ -251,21 +251,15 @@ tasks.register("copyAxolyncBrowserAssets") {
         val copiedAssetsDir = file("${targetDir.absolutePath}/assets")
         val wrappedWorkersDir = file("${targetDir.absolutePath}/workers")
         wrappedWorkersDir.mkdirs()
-
-        val packagedBridgeWorkers = mapOf(
-            "lyricflowBridgeWorker" to "lyricflowBridgeWorker.js",
-            "syncengineBridgeWorker" to "syncengineBridgeWorker.js"
-        )
-        for ((workerStem, outputName) in packagedBridgeWorkers) {
-            val candidate = fileTree(copiedAssetsDir).matching {
-                include("${workerStem}-*.ts")
-            }.files.singleOrNull()
-                ?: throw GradleException(
-                    "Expected packaged bridge worker asset for ${workerStem} in ${copiedAssetsDir.absolutePath}"
+        val requiredWorkers = listOf("lyricflowBridgeWorker.js", "syncengineBridgeWorker.js")
+        requiredWorkers.forEach { workerName ->
+            val workerFile = file("${wrappedWorkersDir.absolutePath}/${workerName}")
+            if (!workerFile.exists()) {
+                throw GradleException(
+                    "Expected generated packaged bridge worker ${workerName} in ${wrappedWorkersDir.absolutePath}"
                 )
-            candidate.copyTo(file("${wrappedWorkersDir.absolutePath}/${outputName}"), overwrite = true)
+            }
         }
-
         fileTree(copiedAssetsDir).matching {
             include("lyricflowBridgeWorker-*.ts")
             include("syncengineBridgeWorker-*.ts")
