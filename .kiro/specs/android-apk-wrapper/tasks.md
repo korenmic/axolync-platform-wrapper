@@ -505,6 +505,15 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 39.3 Add regression coverage
     - Prove the checked-in wrapped LyricFlow worker contains neither the helper import nor the CommonJS `require(...)` helper call.
 
+
+- [x] 40. Serve wrapped Android LyricFlow bridge requests from the local server when no packaged backend exists
+  - [x] 40.1 Reproduce Android LyricFlow bridge failures after worker bootstrap is fixed
+    - Cover the case where the wrapped runtime reaches `lyricflow-bridge`, but the worker still fails with `Failed to fetch` because no packaged localhost backend is actually listening on the LyricFlow bridge port.
+  - [x] 40.2 Satisfy wrapped LyricFlow bridge init/process/dispose requests directly from the local server fallback path
+    - Keep the wrapped local server honoring the bridge contract for LyricFlow requests by answering init/dispose and translating LRCLIB results into the expected lyric payload when the packaged backend is absent.
+  - [x] 40.3 Add regression coverage
+    - Prove the wrapped local server contains the LyricFlow fallback bridge path and LRCLIB request handling markers needed by the packaged runtime.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness

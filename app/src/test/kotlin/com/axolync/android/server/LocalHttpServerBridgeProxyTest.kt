@@ -38,4 +38,16 @@ class LocalHttpServerBridgeProxyTest {
         assertTrue(source.contains("\"lyricflow\": \"http://\$BRIDGE_HOST:\$LYRICFLOW_BACKEND_PORT\""))
         assertTrue(source.contains("return \"http://\$BRIDGE_HOST:\$port\$suffix\""))
     }
+
+    @Test
+    fun `LocalHttpServer can satisfy lyricflow bridge requests locally when the packaged backend is absent`() {
+        val source = File("src/main/kotlin/com/axolync/android/server/LocalHttpServer.kt").readText()
+
+        assertTrue(source.contains("handleLyricflowBridgeFallback"))
+        assertTrue(source.contains("LRCLIB_GET_URL"))
+        assertTrue(source.contains("LRCLIB_SEARCH_URL"))
+        assertTrue(source.contains("fetchDirectLrcLibLyrics"))
+        assertTrue(source.contains("\"android-local-lrclib\""))
+        assertTrue(source.contains("LyricFlow backend unavailable, served local fallback"))
+    }
 }
