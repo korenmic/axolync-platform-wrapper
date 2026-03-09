@@ -4,7 +4,11 @@ import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
 import fi.iki.elonen.NanoHTTPD
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * LocalHttpServer serves bundled web application assets via HTTP on localhost.
@@ -23,6 +27,13 @@ class LocalHttpServer(
 
     companion object {
         private const val TAG = "LocalHttpServer"
+        private const val BRIDGE_CONFIG_PATH = "/__axolync/runtime-bridge-config"
+        private const val BRIDGE_PROXY_PREFIX = "/__axolync/bridge/"
+        private const val BRIDGE_DEV_LOG_PATH = "/__axolync/dev-bridge-log"
+        private const val BRIDGE_HOST = "127.0.0.1"
+        private const val SONGSENSE_BACKEND_PORT = 8000
+        private const val SYNCENGINE_BACKEND_PORT = 3000
+        private const val LYRICFLOW_BACKEND_PORT = 8093
 
         // Supported MIME types (explicit mapping)
         private val MIME_TYPES = mapOf(
@@ -49,6 +60,19 @@ class LocalHttpServer(
     }
 
     override fun serve(session: IHTTPSession): Response {
+        if (session.uri == BRIDGE_CONFIG_PATH && (session.method == Method.GET || session.method == Method.HEAD)) {
+            return serveRuntimeBridgeConfig(session)
+        }
+
+        if (session.uri == BRIDGE_DEV_LOG_PATH && session.method == Method.POST) {
+            return handleBridgeDevLog(session)
+        }
+
+        val bridgeTarget = resolveBridgeTargetUrl(session.uri)
+        if (bridgeTarget != null && (session.method == Method.GET || session.method == Method.HEAD || session.method == Method.POST)) {
+            return proxyBridgeRequest(session, bridgeTarget)
+        }
+
         // Only allow GET and HEAD methods
         if (session.method != Method.GET && session.method != Method.HEAD) {
             Log.w(TAG, "Method not allowed: ${session.method}")
@@ -126,6 +150,127 @@ class LocalHttpServer(
         return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404 Not Found: $uri")
     }
 
+    private fun serveRuntimeBridgeConfig(session: IHTTPSession): Response {
+        val payload = """
+            {
+              "host": "127.0.0.1",
+              "ports": {
+                "host": "127.0.0.1",
+                "browserDevPort": ${listeningPort},
+                "desktopDevPort": 4173,
+                "songsenseBackendPort": $SONGSENSE_BACKEND_PORT,
+                "syncengineBackendPort": $SYNCENGINE_BACKEND_PORT,
+                "lyricflowBackendPort": $LYRICFLOW_BACKEND_PORT
+              },
+              "baseUrls": {
+                "songsense": "/__axolync/bridge/songsense/",
+                "syncengine": "/__axolync/bridge/syncengine/",
+                "lyricflow": "/__axolync/bridge/lyricflow/"
+              },
+              "backendUrls": {
+                "songsense": "http://$BRIDGE_HOST:$SONGSENSE_BACKEND_PORT",
+                "syncengine": "http://$BRIDGE_HOST:$SYNCENGINE_BACKEND_PORT",
+                "lyricflow": "http://$BRIDGE_HOST:$LYRICFLOW_BACKEND_PORT"
+              },
+              "devLogEndpoint": "$BRIDGE_DEV_LOG_PATH"
+            }
+        """.trimIndent()
+        val response = if (session.method == Method.HEAD) {
+            newFixedLengthResponse(Response.Status.OK, "application/json", "")
+        } else {
+            newFixedLengthResponse(Response.Status.OK, "application/json", payload)
+        }
+        response.addHeader("Content-Type", "application/json")
+        response.addHeader("Cache-Control", "no-store")
+        return response
+    }
+
+    private fun handleBridgeDevLog(session: IHTTPSession): Response {
+        return try {
+            val payload = readRequestBody(session)
+            Log.d(TAG, "Bridge dev log payload bytes=${payload.size}")
+            newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", "")
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to record bridge dev log", error)
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "500 Failed to record bridge log")
+        }
+    }
+
+    private fun resolveBridgeTargetUrl(uri: String): String? {
+        if (!uri.startsWith(BRIDGE_PROXY_PREFIX)) return null
+        val remainder = uri.removePrefix(BRIDGE_PROXY_PREFIX)
+        val slashIndex = remainder.indexOf('/')
+        val kind = if (slashIndex >= 0) remainder.substring(0, slashIndex) else remainder
+        val suffix = if (slashIndex >= 0) remainder.substring(slashIndex) else "/"
+        val port = when (kind) {
+            "songsense" -> SONGSENSE_BACKEND_PORT
+            "syncengine" -> SYNCENGINE_BACKEND_PORT
+            "lyricflow" -> LYRICFLOW_BACKEND_PORT
+            else -> return null
+        }
+        return "http://$BRIDGE_HOST:$port$suffix"
+    }
+
+    private fun proxyBridgeRequest(session: IHTTPSession, targetUrl: String): Response {
+        return try {
+            val connection = (URL(targetUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = session.method.name
+                instanceFollowRedirects = false
+                connectTimeout = 3000
+                readTimeout = 10_000
+                doInput = true
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Cache-Control", "no-store")
+                for ((key, value) in session.headers) {
+                    if (key.equals("content-length", ignoreCase = true)) continue
+                    if (key.equals("host", ignoreCase = true)) continue
+                    if (key.equals("connection", ignoreCase = true)) continue
+                    setRequestProperty(key, value)
+                }
+            }
+
+            if (session.method == Method.POST) {
+                val body = readRequestBody(session)
+                connection.doOutput = true
+                connection.outputStream.use { it.write(body) }
+            }
+
+            val status = Response.Status.lookup(connection.responseCode) ?: Response.Status.OK
+            val bodyBytes = if (session.method == Method.HEAD) {
+                ByteArray(0)
+            } else {
+                val stream = try {
+                    connection.inputStream
+                } catch (_: IOException) {
+                    connection.errorStream
+                }
+                stream?.use { it.readBytes() } ?: ByteArray(0)
+            }
+            val mime = connection.contentType?.substringBefore(';') ?: "application/json"
+            val response = newChunkedResponse(status, mime, ByteArrayInputStream(bodyBytes))
+            connection.headerFields
+                .filterKeys { it != null }
+                .forEach { (key, values) ->
+                    values?.forEach { value -> response.addHeader(key, value) }
+                }
+            response.addHeader("Cache-Control", "no-store")
+            response
+        } catch (error: Exception) {
+            Log.w(TAG, "Bridge proxy failure for $targetUrl", error)
+            newFixedLengthResponse(
+                Response.Status.lookup(502) ?: Response.Status.INTERNAL_ERROR,
+                "text/plain",
+                "502 Bridge proxy failed: ${error.message ?: "unknown"}"
+            )
+        }
+    }
+
+    private fun readRequestBody(session: IHTTPSession): ByteArray {
+        val body = ByteArrayOutputStream()
+        session.inputStream.use { input -> input.copyTo(body) }
+        return body.toByteArray()
+    }
+
     private fun resolveAsset(uri: String): ResolvedAsset? {
         val candidates = linkedSetOf(uri)
         val lastSegment = uri.substringAfterLast('/')
@@ -199,6 +344,9 @@ class LocalHttpServer(
     private fun shouldFallbackToIndex(uri: String): Boolean {
         if (uri == "/health") return false
         if (uri.startsWith("/api/")) return false
+        if (uri == BRIDGE_CONFIG_PATH) return false
+        if (uri == BRIDGE_DEV_LOG_PATH) return false
+        if (uri.startsWith(BRIDGE_PROXY_PREFIX)) return false
 
         // Don't fallback for internal static/module directories.
         if (uri.startsWith("/core/") ||

@@ -466,6 +466,15 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 34.2 Re-run the packaged-browser asset guard
     - Confirm the checked-in wrapped asset tree still passes the native/static asset verification after the refresh.
 
+- [x] 35. Add real wrapped-runtime bridge proxy support and keep preinstalled bridge parity visible
+  - [x] 35.1 Reproduce that the wrapped local server rejects bridge POST requests and leaves bridge flows stuck
+    - Add focused coverage for the wrapped runtime bridge endpoints so LyricFlow/SyncEngine POST traffic cannot silently hit a static-only server and return `405 Method Not Allowed`.
+  - [x] 35.2 Add bridge proxy/runtime-config handling to the wrapped local server
+    - Serve the runtime bridge-config endpoint and forward wrapped runtime bridge requests to the real localhost backends instead of treating them as static assets.
+    - Keep the wrapped runtime behavior aligned with the browser dev stack bridge contract.
+  - [x] 35.3 Add/keep regression coverage
+    - Keep the wrapped local-server bridge proxy contract green so Android does not regress back to static-only bridge paths.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness
