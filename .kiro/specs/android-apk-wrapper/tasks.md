@@ -489,6 +489,14 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 37.3 Add regression coverage
     - Prove the wrapped preinstalled manifest matches the bundled bridge ZIP manifests for SongSense, SyncEngine, and LyricFlow.
 
+- [x] 38. Keep wrapped LyricFlow worker assets compatible with classic Android WebView worker loading
+  - [x] 38.1 Reproduce classic-worker import crashes in checked-in wrapped assets
+    - Cover the case where the checked-in packaged LyricFlow worker still starts with a module import and Android crashes with `Cannot use import statement outside a module`.
+  - [x] 38.2 Refresh wrapped assets to the self-contained worker packaging contract
+    - Keep the checked-in wrapped browser asset tree aligned with the packaged classic LyricFlow worker output that inlines its helper code.
+  - [x] 38.3 Add regression coverage
+    - Prove the checked-in wrapped LyricFlow worker no longer contains the helper import and still contains the inlined helper implementation.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness

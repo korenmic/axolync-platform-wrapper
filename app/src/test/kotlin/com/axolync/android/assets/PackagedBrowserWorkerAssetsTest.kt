@@ -29,6 +29,9 @@ class PackagedBrowserWorkerAssetsTest {
         assertFalse(syncengineWorker.readText().contains("interface BridgeWorkerMessage"))
         assertFalse(lyricflowWorker.readText().contains("export {};"))
         assertFalse(syncengineWorker.readText().contains("export {};"))
+        assertFalse(lyricflowWorker.readText().contains("import { fetchDirectLrcLibLyrics }"))
+        assertFalse(lyricflowWorker.readText().contains("Object.defineProperty(exports"))
+        assertTrue(lyricflowWorker.readText().contains("function parseSongIdentity(songId)"))
         assertTrue(staleTsWorkers.isEmpty())
     }
 }
