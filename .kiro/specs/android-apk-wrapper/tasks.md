@@ -475,6 +475,20 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 35.3 Add/keep regression coverage
     - Keep the wrapped local-server bridge proxy contract green so Android does not regress back to static-only bridge paths.
 
+- [x] 36. Use localhost-safe bridge backend URLs in the wrapped runtime
+  - [x] 36.1 Replace Android bridge backend URLs that still point at `127.0.0.1`
+    - Keep the wrapped runtime on the canonical `localhost` host for cleartext compatibility when proxying to SongSense, SyncEngine, and LyricFlow backends.
+  - [x] 36.2 Add regression coverage
+    - Prove the wrapped local server runtime config and proxy target resolution no longer emit `127.0.0.1` backend URLs.
+
+- [x] 37. Keep wrapped preinstalled bridge assets in parity with browser bridge manifests
+  - [x] 37.1 Reproduce SyncEngine bridge preinstalled manifest drift in Android assets
+    - Cover the case where the wrapped asset manifest version drifts from the bundled bridge ZIP and causes the bridge plugin to disappear from Android plugin lists.
+  - [x] 37.2 Fix wrapped preinstalled manifest parity
+    - Ensure Android copied assets keep the same bridge manifest versions and names as the current browser preinstalled bundles.
+  - [x] 37.3 Add regression coverage
+    - Prove the wrapped preinstalled manifest matches the bundled bridge ZIP manifests for SongSense, SyncEngine, and LyricFlow.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness

@@ -30,7 +30,7 @@ class LocalHttpServer(
         private const val BRIDGE_CONFIG_PATH = "/__axolync/runtime-bridge-config"
         private const val BRIDGE_PROXY_PREFIX = "/__axolync/bridge/"
         private const val BRIDGE_DEV_LOG_PATH = "/__axolync/dev-bridge-log"
-        private const val BRIDGE_HOST = "127.0.0.1"
+        private const val BRIDGE_HOST = "localhost"
         private const val SONGSENSE_BACKEND_PORT = 8000
         private const val SYNCENGINE_BACKEND_PORT = 3000
         private const val LYRICFLOW_BACKEND_PORT = 8093
@@ -153,9 +153,9 @@ class LocalHttpServer(
     private fun serveRuntimeBridgeConfig(session: IHTTPSession): Response {
         val payload = """
             {
-              "host": "127.0.0.1",
+              "host": "localhost",
               "ports": {
-                "host": "127.0.0.1",
+                "host": "localhost",
                 "browserDevPort": ${listeningPort},
                 "desktopDevPort": 4173,
                 "songsenseBackendPort": $SONGSENSE_BACKEND_PORT,

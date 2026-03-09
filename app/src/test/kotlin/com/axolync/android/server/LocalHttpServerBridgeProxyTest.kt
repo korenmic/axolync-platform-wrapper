@@ -26,4 +26,16 @@ class LocalHttpServerBridgeProxyTest {
         assertTrue(source.contains("requestMethod = session.method.name"))
         assertTrue(source.contains("if (session.method == Method.POST)"))
     }
+
+    @Test
+    fun `LocalHttpServer uses localhost bridge backend URLs for cleartext-safe Android proxying`() {
+        val source = File("src/main/kotlin/com/axolync/android/server/LocalHttpServer.kt").readText()
+
+        assertTrue(source.contains("private const val BRIDGE_HOST = \"localhost\""))
+        assertTrue(source.contains("\"host\": \"localhost\""))
+        assertTrue(source.contains("\"songsense\": \"http://\$BRIDGE_HOST:\$SONGSENSE_BACKEND_PORT\""))
+        assertTrue(source.contains("\"syncengine\": \"http://\$BRIDGE_HOST:\$SYNCENGINE_BACKEND_PORT\""))
+        assertTrue(source.contains("\"lyricflow\": \"http://\$BRIDGE_HOST:\$LYRICFLOW_BACKEND_PORT\""))
+        assertTrue(source.contains("return \"http://\$BRIDGE_HOST:\$port\$suffix\""))
+    }
 }
