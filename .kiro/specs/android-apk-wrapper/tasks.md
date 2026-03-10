@@ -549,6 +549,16 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 44.3 Add focused regression coverage
     - Prove the wrapped local server source uses NanoHTTPD body parsing for POST payloads and still supports the direct embedded LyricFlow proof-of-life test path.
 
+- [x] 45. Expose embedded LyricFlow status and invocation directly through `AndroidBridge`
+  - [x] 45.1 Reproduce the Android gap where embedded Python succeeds natively but WebView fetch still fails
+    - Cover the case where the Android wrapper already records successful embedded LyricFlow calls, but the browser path still depends on the local HTTP compatibility route and fails before consuming the native result.
+  - [x] 45.2 Add direct native-bridge hooks for embedded LyricFlow status and invocation
+    - Expose embedded LyricFlow runtime status as structured JSON through `NativeBridge`.
+    - Expose direct embedded LyricFlow invocation through `NativeBridge` with explicit success, timeout, and failure envelopes.
+    - Keep the existing local HTTP server available for serving the wrapped app and other wrapper duties, but stop requiring it for Android LyricFlow request execution.
+  - [x] 45.3 Add focused regression coverage
+    - Prove `NativeBridge` exposes the embedded LyricFlow runtime status and direct invocation hooks and records native diagnostics for start/success/timeout/failure.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness

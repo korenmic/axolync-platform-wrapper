@@ -18,12 +18,17 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import com.axolync.android.BuildConfig
+import com.axolync.android.logging.RuntimeNativeLogStore
+import com.axolync.android.python.EmbeddedPythonManager
 import com.axolync.android.services.AudioCaptureService
 import com.axolync.android.services.PermissionManager
 import com.axolync.android.services.StatusBarSongSignalService
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * NativeBridge provides minimal bidirectional communication between native Android and web application.
@@ -41,6 +46,8 @@ class NativeBridge(
 
     companion object {
         private const val TAG = "NativeBridge"
+        private val EMBEDDED_LYRICFLOW_EXECUTOR = Executors.newCachedThreadPool()
+        private const val EMBEDDED_LYRICFLOW_TIMEOUT_MS = 15_000L
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -419,6 +426,105 @@ class NativeBridge(
 
     @JavascriptInterface
     fun isDebugBuild(): Boolean = BuildConfig.DEBUG
+
+    @JavascriptInterface
+    fun getEmbeddedLyricflowRuntimeStatus(): String {
+        val status = EmbeddedPythonManager.getInstance(context).runSelfTest()
+        return JSONObject().apply {
+            put("runtime", "android-wrapper")
+            put(
+                "lyricflow",
+                JSONObject().apply {
+                    put("pythonProcessSupported", true)
+                    put("launchAttempted", status.startupAttempted)
+                    put("launchSucceeded", status.startupSucceeded)
+                    put("startupFailureStage", status.startupFailureStage ?: JSONObject.NULL)
+                    put("startupFailureMessage", status.startupFailureMessage ?: JSONObject.NULL)
+                    put("criticalImportsSucceeded", status.criticalImportsSucceeded ?: JSONObject.NULL)
+                    put("healthCheckSucceeded", status.healthCheckSucceeded ?: JSONObject.NULL)
+                    put("health", status.health)
+                    put("executionMode", "android-embedded-python")
+                }
+            )
+        }.toString()
+    }
+
+    @JavascriptInterface
+    fun invokeEmbeddedLyricflowBridge(operation: String, payloadJson: String, headersJson: String?): String {
+        val manager = EmbeddedPythonManager.getInstance(context)
+        val runtimeStatus = manager.runSelfTest()
+        if (!runtimeStatus.startupSucceeded || runtimeStatus.health != "ok") {
+            RuntimeNativeLogStore.record(
+                TAG,
+                "error",
+                "NativeBridge embedded LyricFlow call blocked by unhealthy runtime",
+                "operation=$operation stage=${runtimeStatus.startupFailureStage ?: "unknown"} message=${runtimeStatus.startupFailureMessage ?: "unknown"}"
+            )
+            return JSONObject().apply {
+                put("ok", false)
+                put("status", 503)
+                put("error", "Embedded Python runtime unavailable for LyricFlow")
+                put(
+                    "details",
+                    JSONObject().apply {
+                        put("startupFailureStage", runtimeStatus.startupFailureStage ?: JSONObject.NULL)
+                        put("startupFailureMessage", runtimeStatus.startupFailureMessage ?: JSONObject.NULL)
+                        put("health", runtimeStatus.health)
+                    }
+                )
+            }.toString()
+        }
+
+        val startedAtMs = System.currentTimeMillis()
+        RuntimeNativeLogStore.record(
+            TAG,
+            "info",
+            "NativeBridge embedded LyricFlow call started",
+            "operation=$operation bytes=${payloadJson.toByteArray(Charsets.UTF_8).size}"
+        )
+
+        return try {
+            val task = EMBEDDED_LYRICFLOW_EXECUTOR.submit<String> {
+                manager.invokeLyricFlowBridge(operation, payloadJson, headersJson)
+            }
+            val responseJson = task.get(EMBEDDED_LYRICFLOW_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            RuntimeNativeLogStore.record(
+                TAG,
+                "info",
+                "NativeBridge embedded LyricFlow call succeeded",
+                "operation=$operation elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            JSONObject().apply {
+                put("ok", true)
+                put("status", 200)
+                put("responseJson", responseJson)
+            }.toString()
+        } catch (error: TimeoutException) {
+            RuntimeNativeLogStore.record(
+                TAG,
+                "error",
+                "NativeBridge embedded LyricFlow call timed out",
+                "operation=$operation timeoutMs=$EMBEDDED_LYRICFLOW_TIMEOUT_MS elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+            )
+            JSONObject().apply {
+                put("ok", false)
+                put("status", 504)
+                put("error", "Embedded LyricFlow call timed out")
+            }.toString()
+        } catch (error: Exception) {
+            RuntimeNativeLogStore.record(
+                TAG,
+                "error",
+                "NativeBridge embedded LyricFlow call failed",
+                "operation=$operation elapsedMs=${System.currentTimeMillis() - startedAtMs} error=${error.message ?: error.javaClass.simpleName}"
+            )
+            JSONObject().apply {
+                put("ok", false)
+                put("status", 502)
+                put("error", error.message ?: error.javaClass.simpleName)
+            }.toString()
+        }
+    }
 
     /**
      * Called by web application when initialization is complete.
