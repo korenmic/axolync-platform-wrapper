@@ -22,12 +22,15 @@ class EmbeddedPythonSourceStagingTest {
         val backendInit = File(stagedRoot, "axolync_lyricflow_backend/__init__.py")
         val bridgeInit = File(stagedRoot, "axolync_android_bridge/__init__.py")
         val bridgeEntry = File(stagedRoot, "axolync_android_bridge/lyricflow_bridge.py")
+        val packagedConfig = File(stagedRoot, "axolync_android_bridge/config/providers.yaml")
 
         assertTrue(stagedRoot.exists())
         assertTrue(backendInit.exists())
         assertTrue(bridgeInit.exists())
         assertTrue(bridgeEntry.exists())
+        assertTrue(packagedConfig.exists())
         assertTrue(bridgeEntry.readText().contains("entrypoint_placeholder"))
+        assertTrue(packagedConfig.readText().contains("adapter_priority:"))
     }
 
     @Test

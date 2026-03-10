@@ -14,6 +14,7 @@ val lyricflowBackendRoot = providers.environmentVariable("AXOLYNC_LYRICFLOW_BACK
 val lyricflowBackendSourceDir = lyricflowBackendRoot.map { File(it).resolve("src/axolync_lyricflow_backend") }
 val lyricflowAndroidBridgeSourceDir = lyricflowBackendRoot.map { File(it).resolve("src/axolync_android_bridge") }
 val lyricflowAndroidRequirementsFile = lyricflowBackendRoot.map { File(it).resolve("requirements-android.txt") }
+val lyricflowRuntimeConfigFile = lyricflowBackendRoot.map { File(it).resolve("../config/providers.yaml") }
 
 android {
     namespace = "com.axolync.android"
@@ -321,6 +322,7 @@ val prepareEmbeddedPythonScaffold by tasks.registering {
     inputs.dir(lyricflowBackendSourceDir)
     inputs.dir(lyricflowAndroidBridgeSourceDir)
     inputs.file(lyricflowAndroidRequirementsFile)
+    inputs.file(lyricflowRuntimeConfigFile)
     outputs.dir(embeddedPythonRoot)
 
     doLast {
@@ -328,6 +330,7 @@ val prepareEmbeddedPythonScaffold by tasks.registering {
         val requirementsFile = lyricflowAndroidRequirementsFile.get()
         val backendSourceDir = lyricflowBackendSourceDir.get()
         val bridgeSourceDir = lyricflowAndroidBridgeSourceDir.get()
+        val runtimeConfigFile = lyricflowRuntimeConfigFile.get()
 
         if (!backendSourceDir.exists()) {
             throw GradleException("Expected LyricFlow backend source directory at ${backendSourceDir.absolutePath}")
@@ -346,6 +349,13 @@ val prepareEmbeddedPythonScaffold by tasks.registering {
         copy {
             from(bridgeSourceDir)
             into(File(sourceDir, "axolync_android_bridge"))
+        }
+        if (!runtimeConfigFile.exists()) {
+            throw GradleException("Expected LyricFlow runtime config file at ${runtimeConfigFile.absolutePath}")
+        }
+        copy {
+            from(runtimeConfigFile)
+            into(File(sourceDir, "axolync_android_bridge/config"))
         }
 
         if (!requirementsFile.exists()) {
