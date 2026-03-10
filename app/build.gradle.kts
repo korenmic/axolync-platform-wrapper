@@ -1,13 +1,25 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.chaquo.python")
 }
+
+
+val embeddedPythonRoot = layout.buildDirectory.dir("generated/axolync-python")
+val embeddedPythonSourceDir = embeddedPythonRoot.map { it.dir("src/main/python") }
+val embeddedPythonRequirementsFile = embeddedPythonRoot.map { it.file("requirements-android.txt") }
 
 android {
     namespace = "com.axolync.android"
     compileSdk = 34
 
     defaultConfig {
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
+
         applicationId = "com.axolync.android"
         minSdk = 24
         targetSdk = 34
@@ -93,6 +105,23 @@ android {
     sourceSets {
         getByName("main") {
             assets.srcDirs("src/main/assets")
+        }
+    }
+}
+
+
+chaquopy {
+    defaultConfig {
+        version = "3.12"
+        buildPython("/usr/bin/python3.12")
+        pip {
+            install("-r", embeddedPythonRequirementsFile.get().asFile.absolutePath)
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            srcDir(embeddedPythonSourceDir)
         }
     }
 }
@@ -279,4 +308,36 @@ tasks.named("preBuild") {
 // Ensure copied assets always come from a freshly built browser dist.
 tasks.named("copyAxolyncBrowserAssets") {
     dependsOn("buildAxolyncBrowserDist")
+}
+
+
+val prepareEmbeddedPythonScaffold by tasks.registering {
+    description = "Prepare placeholder embedded Python source and requirements inputs for Android packaging"
+    group = "build"
+
+    outputs.dir(embeddedPythonRoot)
+
+    doLast {
+        val sourceDir = embeddedPythonSourceDir.get().asFile
+        val packageDir = File(sourceDir, "axolync_android_bridge")
+        val requirementsFile = embeddedPythonRequirementsFile.get().asFile
+
+        packageDir.mkdirs()
+        val initFile = File(packageDir, "__init__.py")
+        if (!initFile.exists()) {
+            initFile.writeText("# Placeholder embedded Python package scaffold.\n")
+        }
+        if (!requirementsFile.exists()) {
+            requirementsFile.parentFile.mkdirs()
+            requirementsFile.writeText("# Populated by later Android embedded-Python packaging tasks.\n")
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(prepareEmbeddedPythonScaffold)
+}
+
+tasks.matching { it.name.endsWith("PythonRequirements") || it.name.endsWith("PythonBuildPackages") }.configureEach {
+    dependsOn(prepareEmbeddedPythonScaffold)
 }
