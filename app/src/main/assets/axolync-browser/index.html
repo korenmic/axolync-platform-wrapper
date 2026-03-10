@@ -842,13 +842,18 @@
     }
 
     #debug-log-panel header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
       gap: 0.5rem;
       padding: 0.7rem 0.8rem;
       border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
       font-size: 0.82rem;
+    }
+
+    #debug-log-panel .debug-header-title {
+      white-space: nowrap;
+      padding-top: 0.22rem;
     }
 
     #debug-log-panel header strong {
@@ -861,20 +866,22 @@
       gap: 0.4rem;
       min-width: 0;
       flex: 1;
-      align-items: flex-end;
+      align-items: stretch;
+      overflow: hidden;
     }
 
     #debug-log-panel .debug-actions {
       display: flex;
       gap: 0.4rem;
       align-items: center;
-      justify-content: flex-end;
+      justify-content: flex-start;
       width: 100%;
       min-width: 0;
       overflow-x: auto;
       padding-bottom: 0.1rem;
       scrollbar-width: thin;
       touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
     }
 
     #debug-log-panel .debug-actions button {
@@ -949,6 +956,15 @@
     #debug-log-output .debug-log-line[data-plugin-type="lyricflow"] {
       background: rgba(141, 91, 19, 0.16);
       color: #fff5df;
+    }
+
+    #debug-log-output .debug-log-line-error {
+      margin: 0.14rem 0;
+      padding: 0.18rem 0.3rem;
+      border-radius: 0.32rem;
+      background: rgba(122, 18, 18, 0.5);
+      color: #ffe6e6;
+      box-shadow: 0 0 0 1px rgba(255, 140, 140, 0.26) inset;
     }
 
     #help-popover {
@@ -1423,7 +1439,7 @@
   </div>
   <div id="debug-log-panel" hidden aria-live="polite">
     <header>
-      <strong>Logs</strong>
+      <div class="debug-header-title"><strong>Logs</strong></div>
       <div class="debug-toolbar">
         <div class="debug-actions">
           <button id="debug-log-toggle-notifications" class="debug-toggle-btn is-active" type="button" aria-pressed="true" hidden>Notifications</button>
