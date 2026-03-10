@@ -29,4 +29,15 @@ class EmbeddedPythonSourceStagingTest {
         assertTrue(bridgeEntry.exists())
         assertTrue(bridgeEntry.readText().contains("entrypoint_placeholder"))
     }
+
+    @Test
+    fun `focused build stages the embedded-python smoke proof bridge code deterministically`() {
+        val bridgeEntry = File("build/generated/axolync-python/src/main/python/axolync_android_bridge/lyricflow_bridge.py")
+
+        assertTrue(bridgeEntry.exists())
+        val bridgeSource = bridgeEntry.readText()
+        assertTrue(bridgeSource.contains("def smoke_ping()"))
+        assertTrue(bridgeSource.contains("hello from python"))
+        assertTrue(bridgeSource.contains("\"executionMode\": \"embedded-python\""))
+    }
 }
