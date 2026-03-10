@@ -358,9 +358,52 @@ class LocalHttpServer(
     }
 
     private fun readRequestBody(session: IHTTPSession): ByteArray {
+        RuntimeNativeLogStore.record(TAG, "info", "Reading local bridge POST body", "uri=${session.uri}")
+        val files = linkedMapOf<String, String>()
+        try {
+            session.parseBody(files)
+            val postData = files["postData"]
+            if (postData != null) {
+                val bytes = postData.toByteArray(Charsets.UTF_8)
+                RuntimeNativeLogStore.record(
+                    TAG,
+                    "info",
+                    "Read local bridge POST body from NanoHTTPD parseBody",
+                    "uri=${session.uri} bytes=${bytes.size}"
+                )
+                return bytes
+            }
+        } catch (error: Exception) {
+            RuntimeNativeLogStore.record(
+                TAG,
+                "error",
+                "NanoHTTPD parseBody failed for local bridge POST",
+                "uri=${session.uri} error=${error.message ?: error.javaClass.simpleName}"
+            )
+        }
+
+        val declaredLength = session.headers["content-length"]?.toIntOrNull()
+        if (declaredLength != null && declaredLength >= 0) {
+            val bytes = session.inputStream.readNBytes(declaredLength)
+            RuntimeNativeLogStore.record(
+                TAG,
+                "info",
+                "Read local bridge POST body using bounded fallback",
+                "uri=${session.uri} declaredBytes=$declaredLength actualBytes=${bytes.size}"
+            )
+            return bytes
+        }
+
         val body = ByteArrayOutputStream()
         session.inputStream.use { input -> input.copyTo(body) }
-        return body.toByteArray()
+        val bytes = body.toByteArray()
+        RuntimeNativeLogStore.record(
+            TAG,
+            "warn",
+            "Read local bridge POST body using EOF fallback",
+            "uri=${session.uri} bytes=${bytes.size}"
+        )
+        return bytes
     }
 
     private fun handleEmbeddedLyricflowBridgeRequest(session: IHTTPSession, requestBody: ByteArray): Response? {

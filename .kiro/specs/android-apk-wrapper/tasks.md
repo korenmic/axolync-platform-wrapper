@@ -539,6 +539,16 @@ The implementation uses Kotlin for all native Android components and integrates 
   - [x] 43.3 Add focused regression coverage
     - Prove the wrapped local server exposes the native log endpoint and returns a structured timeout or invocation failure for embedded LyricFlow bridge calls instead of silently hanging.
 
+- [x] 44. Parse Android LyricFlow bridge POST bodies through NanoHTTPD instead of reading the socket to EOF
+  - [x] 44.1 Reproduce the real-device gap where the embedded LyricFlow request never reaches native bridge logging
+    - Cover the case where Android logs show embedded Python healthy and bridge preflight `ok`, but neither native bridge request start nor failure logs appear for `get-lyrics`, implying the request dies at the local HTTP body-read boundary.
+  - [x] 44.2 Use `parseBody`/`postData` for POST payload extraction with a bounded fallback for tests
+    - Replace raw socket-to-EOF POST reading in `LocalHttpServer` with NanoHTTPD body parsing so real WebView requests do not hang before embedded LyricFlow invocation.
+    - Keep a safe bounded fallback for fake test sessions which do not populate NanoHTTPD `postData`.
+    - Add native diagnostics around request-body extraction so the download bundle can show whether the request reached the server and whether body parsing succeeded.
+  - [x] 44.3 Add focused regression coverage
+    - Prove the wrapped local server source uses NanoHTTPD body parsing for POST payloads and still supports the direct embedded LyricFlow proof-of-life test path.
+
 ## Notes
 
 - Tasks labeled (Optional) may be skipped only for MVP builds; mandatory tasks remain required for production readiness
