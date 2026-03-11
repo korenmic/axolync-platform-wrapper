@@ -28,8 +28,8 @@ android {
         applicationId = "com.axolync.android"
         minSdk = 24
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.4.0-beta.1"
+        versionCode = 6
+        versionName = "1.4.0-beta.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
