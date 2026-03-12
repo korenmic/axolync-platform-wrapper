@@ -6,7 +6,7 @@
   - Add or extend Android wrapper tests to prove the source contains the expected logging and decision branches without regressing long-press suppression.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.4, 5.1, 6.1_
 
-- [ ] 2. Add browser-side lyric touch receipt diagnostics and regression coverage
+- [x] 2. Add browser-side lyric touch receipt diagnostics and regression coverage
   - Extend the lyric-scene touch handlers in [main.ts](/home/deck/src/axolync-browser/src/main.ts) so Android touch receipt and action dispatch are explicitly logged to the existing granularity diagnostics stream.
   - Cover touchstart/touchmove/touchend, pinch-start/pinch-apply, and manual drag dispatch in browser tests.
   - Add or update browser regression guards proving the Android touch path still reaches the shared dispatcher while desktop mouse behavior remains unchanged.
