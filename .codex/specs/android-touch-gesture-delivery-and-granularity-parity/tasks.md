@@ -18,7 +18,7 @@
   - Update Android wrapper tests to prove the new gate forwards intended touch input while keeping zoom/selection suppression in place.
   - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 3.4, 5.1, 6.1_
 
-- [ ] 4. Add cross-layer diagnostics proof and debug-export coverage for Android touch gesture parity
+- [x] 4. Add cross-layer diagnostics proof and debug-export coverage for Android touch gesture parity
   - Ensure exported diagnostics contain both native touch-delivery logs and browser-side touch receipt/action logs in a correlatable way.
   - Add tests around the Android native log export surface and browser debug archive expectations so the new touch evidence cannot disappear silently.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 5.3, 5.4_
