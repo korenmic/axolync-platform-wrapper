@@ -23,7 +23,7 @@
   - Add tests around the Android native log export surface and browser debug archive expectations so the new touch evidence cannot disappear silently.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 5.3, 5.4_
 
-- [ ] 5. Prove end-to-end Android gesture parity and sync wrapped browser assets
+- [x] 5. Prove end-to-end Android gesture parity and sync wrapped browser assets
   - Add focused regression coverage that demonstrates the intended Android path can observe drag-driven lyric navigation and pinch-driven granularity actions through the intended runtime path.
   - Regenerate/sync wrapped browser assets in `axolync-android-wrapper` so the checked-in Android asset tree reflects the new browser touch diagnostics/runtime behavior.
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 5.3, 6.1, 6.2_
