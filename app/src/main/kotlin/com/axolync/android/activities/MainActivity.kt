@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat
 import com.axolync.android.BuildConfig
 import com.axolync.android.R
 import com.axolync.android.bridge.NativeBridge
+import com.axolync.android.logging.RuntimeNativeLogStore
 import com.axolync.android.server.ServerManager
 import com.axolync.android.services.AudioCaptureService
 import com.axolync.android.services.LifecycleCoordinator
@@ -58,6 +59,33 @@ class MainActivity : AppCompatActivity() {
         private const val RUNTIME_MODE_QUERY_PARAM = "axolync_runtime"
         private const val CLIENT_PLATFORM_HEADER = "X-Axolync-Client-Platform"
         private const val ANDROID_RUNTIME_MODE = "android-wrapper"
+    }
+
+    private fun touchActionName(actionMasked: Int): String =
+        when (actionMasked) {
+            MotionEvent.ACTION_DOWN -> "ACTION_DOWN"
+            MotionEvent.ACTION_MOVE -> "ACTION_MOVE"
+            MotionEvent.ACTION_UP -> "ACTION_UP"
+            MotionEvent.ACTION_CANCEL -> "ACTION_CANCEL"
+            MotionEvent.ACTION_POINTER_DOWN -> "ACTION_POINTER_DOWN"
+            MotionEvent.ACTION_POINTER_UP -> "ACTION_POINTER_UP"
+            else -> "ACTION_${actionMasked}"
+        }
+
+    private fun recordTouchDelivery(
+        motionEvent: MotionEvent,
+        consumed: Boolean,
+        forwardedToWebView: Boolean,
+        reason: String,
+    ) {
+        val x = motionEvent.getX(0)
+        val y = motionEvent.getY(0)
+        RuntimeNativeLogStore.record(
+            TAG,
+            "info",
+            "Native touch delivery decision",
+            "channel=touch-delivery action=${touchActionName(motionEvent.actionMasked)} pointerCount=${motionEvent.pointerCount} consumed=$consumed forwardedToWebView=$forwardedToWebView reason=$reason x=${"%.1f".format(x)} y=${"%.1f".format(y)}"
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -276,9 +304,21 @@ class MainActivity : AppCompatActivity() {
         // Defensive pinch block: consume multi-touch gestures before WebView scaling logic.
         webView.setOnTouchListener { view, motionEvent ->
             if (motionEvent.actionMasked == MotionEvent.ACTION_POINTER_DOWN || motionEvent.pointerCount > 1) {
+                recordTouchDelivery(
+                    motionEvent = motionEvent,
+                    consumed = true,
+                    forwardedToWebView = false,
+                    reason = "native-pinch-block"
+                )
                 true
             } else {
                 view.parent?.requestDisallowInterceptTouchEvent(true)
+                recordTouchDelivery(
+                    motionEvent = motionEvent,
+                    consumed = false,
+                    forwardedToWebView = true,
+                    reason = "forward-single-touch"
+                )
                 false
             }
         }

@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Instrument native Android touch delivery in `MainActivity` and cover it with wrapper tests
+- [x] 1. Instrument native Android touch delivery in `MainActivity` and cover it with wrapper tests
   - Add structured native touch-delivery logging for single-touch and multi-touch lifecycle events in [MainActivity.kt](/home/deck/src/axolync-android-wrapper/app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt).
   - Record whether each event was forwarded to WebView or consumed by the native gesture gate, including the reason for the decision.
   - Add or extend Android wrapper tests to prove the source contains the expected logging and decision branches without regressing long-press suppression.
