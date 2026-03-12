@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Android Touch Gesture Delivery Status</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111f;
+      --panel: #101b33;
+      --panel-2: #13203d;
+      --text: #e6eefc;
+      --muted: #9cb0d4;
+      --line: #29406f;
+      --warn: #ffb347;
+      --bad: #ff7b7b;
+      --good: #74e39b;
+      --info: #7bbcff;
+    }
+    body { margin: 0; background: radial-gradient(circle at top, #122143, var(--bg) 52%); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1, h2 { margin: 0 0 12px; line-height: 1.15; }
+    h1 { font-size: 2.1rem; }
+    h2 { font-size: 1.25rem; margin-top: 26px; }
+    p, li { color: var(--text); }
+    .lead { color: var(--muted); max-width: 78ch; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+    .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; }
+    .pill.bad { background: rgba(255,123,123,.12); color: var(--bad); border: 1px solid rgba(255,123,123,.4); }
+    .pill.warn { background: rgba(255,179,71,.12); color: var(--warn); border: 1px solid rgba(255,179,71,.4); }
+    .pill.good { background: rgba(116,227,155,.12); color: var(--good); border: 1px solid rgba(116,227,155,.35); }
+    .pill.info { background: rgba(123,188,255,.12); color: var(--info); border: 1px solid rgba(123,188,255,.35); }
+    ul, ol { padding-left: 20px; }
+    code { color: #c9d8ff; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 6px; }
+    .steps li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Android Touch Gesture Delivery Status</h1>
+    <p class="lead">Current conclusion: the previous Android touch parity work was insufficient. It added diagnostics and removed one old native swallow path, but real-device testing still shows touch is effectively blocked in the lyric scene. The strongest remaining suspect is now the WebView/browser suppression stack, not the old single native gate alone.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>What is proven now</h2>
+        <ul>
+          <li><code>MainActivity</code> forwards touch and logs native delivery decisions.</li>
+          <li>The browser still has lyric-scene <code>touchstart</code>/<code>touchmove</code> handlers and logs receipt.</li>
+          <li>Mouse works, touch does not.</li>
+          <li>This strongly suggests the shared interaction model is not the first blocker.</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Why the last pass failed</h2>
+        <p><span class="pill bad">Insufficient</span></p>
+        <p>The work changed delivery and logging, but it never isolated whether WebView/browser suppression was the real culprit. So it improved observability without proving the cause of the real-device failure.</p>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Strongest current culprit</h2>
+      <ul>
+        <li>Injected viewport lock with <code>user-scalable=no</code></li>
+        <li>Injected <code>document.body.style.touchAction = 'none'</code></li>
+        <li>Injected <code>userSelect</code> / <code>webkitTouchCallout</code> suppression</li>
+        <li><code>#lyric-display</code> also using <code>touch-action: none</code></li>
+      </ul>
+      <p>Any one of these might be acceptable alone. The current stack may simply be too aggressive in combination.</p>
+    </section>
+
+    <section class="card">
+      <h2>Would more iterations help?</h2>
+      <p><span class="pill warn">Blind rewrites: low value</span> Another broad fix pass without isolation is likely to waste time again.</p>
+      <p><span class="pill good">One A/B experiment: high value</span> Add a flag that disables the current browser/WebView suppression layer and test one APK on a real device.</p>
+    </section>
+
+    <section class="card">
+      <h2>Recommended next move</h2>
+      <ol class="steps">
+        <li>Add one runtime/build flag that disables the current WebView/browser touch suppression block.</li>
+        <li>Build one APK with the flag flipped.</li>
+        <li>If touch comes back, the culprit is confirmed.</li>
+        <li>Re-enable protections one piece at a time to find the minimal safe subset.</li>
+        <li>Only after that, revisit any remaining browser-side binding issues.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Bottom line</h2>
+      <p>The previous touch work was not final. The best next step is not another guess-driven rewrite. It is one explicit flag-based A/B experiment against the suppression layer, because that is the strongest remaining blocker in the actual source.</p>
+    </section>
+  </main>
+</body>
+</html>
