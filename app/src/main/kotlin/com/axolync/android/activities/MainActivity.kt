@@ -301,26 +301,21 @@ class MainActivity : AppCompatActivity() {
         // Disable long-press text-selection/context menu while preserving JS touch events.
         webView.setOnLongClickListener { true }
 
-        // Defensive pinch block: consume multi-touch gestures before WebView scaling logic.
+        // Forward raw touch delivery to WebView while native/browser zoom remains disabled elsewhere.
         webView.setOnTouchListener { view, motionEvent ->
-            if (motionEvent.actionMasked == MotionEvent.ACTION_POINTER_DOWN || motionEvent.pointerCount > 1) {
-                recordTouchDelivery(
-                    motionEvent = motionEvent,
-                    consumed = true,
-                    forwardedToWebView = false,
-                    reason = "native-pinch-block"
-                )
-                true
+            view.parent?.requestDisallowInterceptTouchEvent(true)
+            val reason = if (motionEvent.pointerCount > 1 || motionEvent.actionMasked == MotionEvent.ACTION_POINTER_DOWN || motionEvent.actionMasked == MotionEvent.ACTION_POINTER_UP) {
+                "forward-multi-touch"
             } else {
-                view.parent?.requestDisallowInterceptTouchEvent(true)
-                recordTouchDelivery(
-                    motionEvent = motionEvent,
-                    consumed = false,
-                    forwardedToWebView = true,
-                    reason = "forward-single-touch"
-                )
-                false
+                "forward-single-touch"
             }
+            recordTouchDelivery(
+                motionEvent = motionEvent,
+                consumed = false,
+                forwardedToWebView = true,
+                reason = reason
+            )
+            false
         }
 
         // Register NativeBridge as JavaScript interface

@@ -16,7 +16,7 @@ class MainActivityTouchDeliveryLoggingTest {
         assertTrue(source.contains("ACTION_POINTER_DOWN"))
         assertTrue(source.contains("ACTION_POINTER_UP"))
         assertTrue(source.contains("forwardedToWebView"))
-        assertTrue(source.contains("native-pinch-block"))
         assertTrue(source.contains("forward-single-touch"))
+        assertTrue(source.contains("forward-multi-touch"))
     }
 }

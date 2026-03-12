@@ -12,7 +12,7 @@
   - Add or update browser regression guards proving the Android touch path still reaches the shared dispatcher while desktop mouse behavior remains unchanged.
   - _Requirements: 1.4, 3.1, 3.2, 3.3, 4.2, 4.3, 5.2, 5.4, 6.2, 6.3_
 
-- [ ] 3. Rewrite the Android native gesture gate so intended gestures reach WebView without re-enabling browser-native zoom
+- [x] 3. Rewrite the Android native gesture gate so intended gestures reach WebView without re-enabling browser-native zoom
   - Replace the blanket multi-touch consume logic in [MainActivity.kt](/home/deck/src/axolync-android-wrapper/app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt) with the narrowest policy that still blocks browser-native pinch zoom and long-press side effects.
   - Preserve single-finger delivery and allow multi-touch gesture data to reach the browser lyric scene.
   - Update Android wrapper tests to prove the new gate forwards intended touch input while keeping zoom/selection suppression in place.
