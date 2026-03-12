@@ -36,8 +36,8 @@ android {
         applicationId = "com.axolync.android"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.4.0-beta.2"
+        versionCode = 7
+        versionName = "1.4.0-beta.3"
         buildConfigField("String", "TOUCH_SUPPRESSION_MODE", "\"${androidTouchSuppressionMode.get()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
