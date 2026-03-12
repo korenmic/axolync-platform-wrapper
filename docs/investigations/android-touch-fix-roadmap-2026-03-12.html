@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Android Touch Fix Roadmap - 2026-03-12</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08111f;
+      --panel: #0e1a30;
+      --panel-2: #132442;
+      --text: #edf3ff;
+      --muted: #9fb1d1;
+      --border: #254066;
+      --done: #2dd38f;
+      --current: #63a6ff;
+      --next: #ffd166;
+      --warn: #ff8e72;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(180deg, #08111f 0%, #0b1528 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main {
+      width: min(1100px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0 64px;
+    }
+    h1, h2, h3 { margin: 0 0 12px; }
+    p, li { color: var(--muted); }
+    section {
+      background: rgba(14, 26, 48, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px 22px;
+      margin-top: 18px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+    }
+    .summary {
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .milestone {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      background: var(--panel-2);
+    }
+    .milestone .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-radius: 999px;
+      padding: 4px 8px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .done { background: rgba(45, 211, 143, 0.14); color: var(--done); }
+    .current { background: rgba(99, 166, 255, 0.14); color: var(--current); }
+    .next { background: rgba(255, 209, 102, 0.14); color: var(--next); }
+    .warn { background: rgba(255, 142, 114, 0.14); color: var(--warn); }
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.92em;
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    ul { margin: 10px 0 0 20px; }
+    @media (max-width: 900px) {
+      .timeline { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1>Android Touch Fix Roadmap</h1>
+      <p class="summary">The wrapper-only A/B is exhausted. The next meaningful branch is the browser-side suppression A/B inside the wrapped browser bundle.</p>
+    </section>
+
+    <section>
+      <h2>Progress Map</h2>
+      <div class="timeline">
+        <div class="milestone">
+          <div class="tag done">Done</div>
+          <h3>Native Logging</h3>
+          <p>Wrapper touch delivery and browser lyric-scene receipt are both logged now.</p>
+        </div>
+        <div class="milestone">
+          <div class="tag done">Done</div>
+          <h3>Gate Rewrite</h3>
+          <p>The obvious native multi-touch swallow path was relaxed and retested.</p>
+        </div>
+        <div class="milestone">
+          <div class="tag warn">Exhausted</div>
+          <h3>Wrapper A/B</h3>
+          <p><code>AXOLYNC_ANDROID_TOUCH_SUPPRESSION_MODE</code> covered only the wrapper-injected suppression layer.</p>
+        </div>
+        <div class="milestone">
+          <div class="tag current">Current</div>
+          <h3>Browser A/B</h3>
+          <p>Isolate the wrapped browser’s own suppression stack with a dedicated browser-side profile.</p>
+        </div>
+        <div class="milestone">
+          <div class="tag next">Next</div>
+          <h3>Decide Path</h3>
+          <p>Either narrow the browser suppression subset or pivot to deeper event-path tracing if behavior is still chaotic.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What Was Already Proven</h2>
+      <ul>
+        <li>Mouse input works on Android, so the shared lyric interaction model is not the only possible runtime path.</li>
+        <li>The first <code>full</code> vs <code>off</code> experiment did not restore clean touch parity.</li>
+        <li>That does not clear the browser layer, because browser-side blockers still remained active in both APKs.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>What Still Blocks Touch</h2>
+      <ul>
+        <li>Static viewport lock with <code>user-scalable=no</code></li>
+        <li><code>#lyric-display { touch-action: none; }</code></li>
+        <li>Android-wrapper lyric-display overflow suppression</li>
+        <li>Browser <code>gesturestart</code> prevention</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Current Experiment</h2>
+      <p>Add a second profile for the wrapped browser itself:</p>
+      <ul>
+        <li><code>AXOLYNC_ANDROID_BROWSER_TOUCH_SUPPRESSION_PROFILE</code></li>
+        <li>passed into browser build as <code>VITE_AXOLYNC_ANDROID_TOUCH_SUPPRESSION_PROFILE</code></li>
+        <li><code>full</code> keeps browser-side suppression on</li>
+        <li><code>relaxed</code> disables browser-side suppression overrides for investigation</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Exit Criteria</h2>
+      <ul>
+        <li>If browser-side <code>relaxed</code> materially improves touch, narrow that layer piece by piece.</li>
+        <li>If behavior is still chaotic, stop spending time on suppression toggles and move to target-layer hit testing and event-path tracing.</li>
+        <li>Only after that should the permanent control-panel fallback be positioned as either essential or secondary.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
