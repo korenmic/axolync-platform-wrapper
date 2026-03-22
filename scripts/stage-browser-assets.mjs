@@ -4,6 +4,37 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(repoRoot, 'app', 'src', 'main', 'assets', 'public');
+const RUNTIME_PROFILE_SNIPPET_MARKER = 'id="axolync-runtime-profile-override"';
+
+function normalizeRuntimeProfile(rawValue, fallbackValue = 'debug') {
+  const normalized = String(rawValue ?? '').trim().toLowerCase();
+  if (normalized === 'debug' || normalized === 'release') {
+    return normalized;
+  }
+  return fallbackValue;
+}
+
+function buildRuntimeProfileSnippet(runtimeProfile) {
+  return `<script ${RUNTIME_PROFILE_SNIPPET_MARKER}>window.__AXOLYNC_RUNTIME_PROFILE = ${JSON.stringify(runtimeProfile)};</script>`;
+}
+
+function applyRuntimeProfileOverrideToHtml(html, runtimeProfile) {
+  const snippet = buildRuntimeProfileSnippet(runtimeProfile);
+  if (html.includes(RUNTIME_PROFILE_SNIPPET_MARKER)) {
+    return html.replace(
+      /<script id="axolync-runtime-profile-override">[\s\S]*?<\/script>/u,
+      snippet,
+    );
+  }
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `  ${snippet}\n</head>`);
+  }
+  const doctypeMatch = html.match(/^<!doctype[^>]*>/iu);
+  if (doctypeMatch) {
+    return `${doctypeMatch[0]}\n${snippet}${html.slice(doctypeMatch[0].length)}`;
+  }
+  return `${snippet}\n${html}`;
+}
 
 export function resolveSourceRoot(currentRepoRoot = repoRoot) {
   const builderNormal = process.env.AXOLYNC_BUILDER_BROWSER_NORMAL?.trim();
@@ -49,6 +80,10 @@ export function resolveDemoPlayerHtml(currentRepoRoot = repoRoot) {
   return fs.existsSync(fallback) ? fallback : null;
 }
 
+export function resolveAndroidRuntimeProfile() {
+  return normalizeRuntimeProfile(process.env.AXOLYNC_ANDROID_RUNTIME_PROFILE);
+}
+
 function ensureRequiredBrowserFiles(sourceRoot) {
   if (!fs.existsSync(sourceRoot)) {
     throw new Error(`Browser source root not found: ${sourceRoot}`);
@@ -64,12 +99,19 @@ export function stageBrowserAssets(options = {}) {
   const demoAssetsRoot = options.demoAssetsRoot ?? resolveDemoAssetsRoot();
   const demoPluginsRoot = options.demoPluginsRoot ?? resolveDemoPluginsRoot();
   const demoPlayerHtml = options.demoPlayerHtml ?? resolveDemoPlayerHtml();
+  const runtimeProfile = options.runtimeProfile ?? resolveAndroidRuntimeProfile();
 
   ensureRequiredBrowserFiles(sourceRoot);
 
   fs.rmSync(targetPublicDir, { recursive: true, force: true });
   fs.mkdirSync(targetPublicDir, { recursive: true });
   fs.cpSync(sourceRoot, targetPublicDir, { recursive: true });
+  const stagedIndexPath = path.join(targetPublicDir, 'index.html');
+  fs.writeFileSync(
+    stagedIndexPath,
+    applyRuntimeProfileOverrideToHtml(fs.readFileSync(stagedIndexPath, 'utf8'), runtimeProfile),
+    'utf8',
+  );
 
   if (demoAssetsRoot) {
     const demoTarget = path.join(targetPublicDir, 'demo', 'assets');
@@ -102,6 +144,7 @@ export function stageBrowserAssets(options = {}) {
     demoAssetsRoot,
     demoPluginsRoot,
     demoPlayerHtml,
+    runtimeProfile,
   };
 }
 

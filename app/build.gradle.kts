@@ -86,6 +86,7 @@ tasks.register<Exec>("stageCapacitorBrowserAssets") {
 
     inputs.file(rootProject.file("scripts/stage-browser-assets.mjs"))
     outputs.dir(file("$projectDir/src/main/assets/public"))
+    outputs.upToDateWhen { false }
 }
 
 tasks.named("preBuild") {

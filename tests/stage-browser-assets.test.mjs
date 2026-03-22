@@ -32,10 +32,15 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
     demoAssetsRoot,
     demoPluginsRoot,
     demoPlayerHtml,
+    runtimeProfile: 'debug',
   });
 
   assert.equal(result.publicDir, publicDir);
-  assert.equal(fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8'), '<!doctype html><title>Axolync</title>');
+  assert.equal(result.runtimeProfile, 'debug');
+  assert.equal(
+    fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8'),
+    '<!doctype html>\n<script id="axolync-runtime-profile-override">window.__AXOLYNC_RUNTIME_PROFILE = "debug";</script><title>Axolync</title>'
+  );
   assert.equal(fs.readFileSync(path.join(publicDir, 'assets', 'main.js'), 'utf8'), 'console.log("browser");');
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'assets', 'house_of_the_rising_sun_instrumental.ogg'), 'utf8'), 'ogg');
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'plugins', 'demo-lyricflow.js'), 'utf8'), 'self.onmessage = () => {};');

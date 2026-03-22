@@ -35,4 +35,11 @@ class CapacitorAssetConfigTest {
         assertTrue(source.contains("cordova_plugins.js"))
         assertTrue(source.contains("AXOLYNC_BUILDER_BROWSER_NORMAL"))
     }
+
+    @Test
+    fun `gradle staging task always reruns before packaging capacitor assets`() {
+        val buildScript = repoFile("app/build.gradle.kts").readText()
+        assertTrue(buildScript.contains("stageCapacitorBrowserAssets"))
+        assertTrue(buildScript.contains("outputs.upToDateWhen { false }"))
+    }
 }
