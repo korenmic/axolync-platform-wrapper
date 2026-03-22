@@ -2,7 +2,8 @@
   "name": "axolync-android-wrapper",
   "private": true,
   "scripts": {
-    "stage:assets": "node scripts/stage-browser-assets.mjs"
+    "stage:assets": "node scripts/stage-browser-assets.mjs",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",

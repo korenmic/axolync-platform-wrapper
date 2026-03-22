@@ -6,7 +6,8 @@
       "version": "0.3.0",
       "type": "SongSense",
       "url": "/plugins/preinstalled/songsense-bridge.zip",
-      "description": "Preinstalled SongSense bridge bundle backed by the real SongSense backend."
+      "description": "Preinstalled SongSense bridge bundle backed by the real SongSense backend.",
+      "contentHash": "sha256:32f9e347bd95ea66652ea2e1361efbdd23f27ae247a62e725379373ed1d14f07"
     },
     {
       "id": "syncengine-bridge",
@@ -14,7 +15,8 @@
       "version": "0.1.0",
       "type": "SyncEngine",
       "url": "/plugins/preinstalled/syncengine-bridge.zip",
-      "description": "Preinstalled SyncEngine bridge bundle backed by the real SyncEngine backend."
+      "description": "Preinstalled SyncEngine bridge bundle backed by the real SyncEngine backend.",
+      "contentHash": "sha256:2448e4401339a4365ded75c3e98656a64e0ebe07fdd14d959b42cb63dffe28c5"
     },
     {
       "id": "lyricflow-bridge",
@@ -22,7 +24,8 @@
       "version": "0.2.0",
       "type": "LyricFlow",
       "url": "/plugins/preinstalled/lyricflow-bridge.zip",
-      "description": "Preinstalled LyricFlow bridge bundle backed by the real LyricFlow backend."
+      "description": "Preinstalled LyricFlow bridge bundle backed by the real LyricFlow backend.",
+      "contentHash": "sha256:46c89dd0262c0d0b7625efe3ec0f996959e30bc27b60d8a585cf37866fb40fc3"
     }
   ]
 }
