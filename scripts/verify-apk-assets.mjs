@@ -71,6 +71,11 @@ function verifyApk(apkPath) {
 
   const hasDemoPlayer = zipEntries.includes('assets/public/demo/player.html');
   const hasDemoLyricflow = zipEntries.includes('assets/public/demo/plugins/demo-lyricflow.js');
+  const hasLegacyAssetTree = zipEntries.some((entry) => entry.startsWith('assets/axolync-browser/'));
+
+  if (hasLegacyAssetTree) {
+    throw new Error(`APK unexpectedly ships legacy axolync-browser asset tree: ${resolved}`);
+  }
   if (shouldIncludeDemoAssets) {
     if (!hasDemoPlayer || !hasDemoLyricflow) {
       throw new Error(`APK is missing staged demo assets in debug profile: ${resolved}`);

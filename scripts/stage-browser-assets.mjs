@@ -128,6 +128,10 @@ export function stageBrowserAssets(options = {}) {
     'utf8',
   );
 
+  if (!includeDemoAssets) {
+    fs.rmSync(path.join(targetPublicDir, 'demo'), { recursive: true, force: true });
+  }
+
   if (includeDemoAssets && demoAssetsRoot) {
     const demoTarget = path.join(targetPublicDir, 'demo', 'assets');
     fs.mkdirSync(demoTarget, { recursive: true });

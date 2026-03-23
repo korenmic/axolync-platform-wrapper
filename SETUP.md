@@ -50,7 +50,7 @@ This creates the `axolync-browser/dist/` directory with the built web applicatio
 
 ### 5. Build the Android Project
 
-The Gradle build is configured to automatically copy the built axolync-browser assets to `app/src/main/assets/axolync-browser/` during the build process.
+The Gradle build is configured to automatically copy the built axolync-browser assets to `app/src/main/assets/public/` during the build process.
 
 ```bash
 # Build the project

@@ -59,7 +59,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            assets.srcDirs("src/main/assets/public", "src/main/assets/capacitor")
+            assets.setSrcDirs(listOf("src/main/assets"))
         }
     }
 }

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
-const assetRoot = path.join(projectRoot, 'app', 'src', 'main', 'assets', 'axolync-browser');
+const assetRoot = path.join(projectRoot, 'app', 'src', 'main', 'assets', 'public');
 
 const args = new Map(
   process.argv.slice(2).map((arg) => {

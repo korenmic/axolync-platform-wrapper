@@ -202,7 +202,7 @@ distrobox enter devbox -- ./gradlew clean :app:assembleDebug
 - **Path**: `app/src/main/kotlin/com/axolync/android/server/LocalHttpServer.kt`
 - **Purpose**: Embedded HTTP server using NanoHTTPD
 - **Binding**: localhost only (security)
-- **Assets**: Serves from `app/src/main/assets/axolync-browser/`
+- **Assets**: Serves from `app/src/main/assets/public/`
 
 ### AxolyncApplication.kt
 - **Path**: `app/src/main/kotlin/com/axolync/android/AxolyncApplication.kt`
@@ -394,7 +394,7 @@ adb logcat | grep "NativeBridge"
 1. Check if server is READY: `adb logcat | grep ServerManager`
 2. Verify WebView loaded: `adb logcat | grep "Loading web app"`
 3. Check JavaScript console: chrome://inspect
-4. Verify assets exist: `ls app/src/main/assets/axolync-browser/`
+4. Verify assets exist: `ls app/src/main/assets/public/`
 5. Test server directly: `adb shell curl http://localhost:<port>/index.html`
 
 ### Splash Screen Issues
@@ -406,7 +406,7 @@ adb logcat | grep "NativeBridge"
 ### Server Won't Start
 1. Check logcat: `adb logcat | grep ServerManager`
 2. Look for port binding errors
-3. Check assets exist: `ls app/src/main/assets/axolync-browser/`
+3. Check assets exist: `ls app/src/main/assets/public/`
 4. Verify AxolyncApplication.onCreate() calls startServerAsync()
 5. Check ServerManager.startServerInternal() for exceptions
 

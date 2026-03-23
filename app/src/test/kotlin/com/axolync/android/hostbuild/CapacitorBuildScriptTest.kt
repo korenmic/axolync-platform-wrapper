@@ -20,7 +20,7 @@ class CapacitorBuildScriptTest {
     fun `app build uses capacitor host dependencies and staged public assets`() {
         val source = repoFile("app/build.gradle.kts").readText()
         assertTrue(source.contains("project(\":capacitor-android\")"))
-        assertTrue(source.contains("src/main/assets/public"))
+        assertTrue(source.contains("assets.setSrcDirs(listOf(\"src/main/assets\"))"))
         assertTrue(source.contains("stageCapacitorBrowserAssets"))
         assertTrue(source.contains("create(\"normal\")"))
         assertTrue(source.contains("create(\"demo\")"))

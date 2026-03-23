@@ -51,12 +51,12 @@ npm run build
 cd ..
 ```
 
-The build output in `axolync-browser/dist/` will be automatically copied to `app/src/main/assets/axolync-browser/` during the Android build process.
+The build output in `axolync-browser/dist/` will be automatically copied to `app/src/main/assets/public/` during the Android build process.
 
 ## Gradle Build Integration
 
 The `app/build.gradle.kts` file includes a custom Gradle task `copyAxolyncBrowserAssets` that:
-- Copies all files from `axolync-browser/dist/` to `app/src/main/assets/axolync-browser/`
+- Copies all files from `axolync-browser/dist/` to `app/src/main/assets/public/`
 - Runs automatically before the `preBuild` task
 - Validates that the source directory exists before attempting to copy
 

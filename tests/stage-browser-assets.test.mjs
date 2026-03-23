@@ -66,6 +66,7 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
 
   writeFile(path.join(sourceRoot, 'index.html'), '<!doctype html><title>Axolync</title>');
   writeFile(path.join(sourceRoot, 'assets', 'main.js'), 'console.log("browser");');
+  writeFile(path.join(sourceRoot, 'demo', 'plugins', 'demo-lyricflow.js'), 'stale demo payload');
   writeFile(path.join(demoAssetsRoot, 'house_of_the_rising_sun_instrumental.ogg'), 'ogg');
   writeFile(path.join(demoPluginsRoot, 'demo-lyricflow.js'), 'self.onmessage = () => {};');
   writeFile(demoPlayerHtml, '<audio src="./assets/demo_track.wav"></audio>');
