@@ -135,7 +135,12 @@ export function stageBrowserAssets(options = {}) {
   if (includeDemoAssets && demoAssetsRoot) {
     const demoTarget = path.join(targetPublicDir, 'demo', 'assets');
     fs.mkdirSync(demoTarget, { recursive: true });
-    fs.cpSync(demoAssetsRoot, demoTarget, { recursive: true });
+    for (const entry of fs.readdirSync(demoAssetsRoot)) {
+      if (entry.toLowerCase().endsWith('.wav')) continue;
+      const source = path.join(demoAssetsRoot, entry);
+      const target = path.join(demoTarget, entry);
+      fs.cpSync(source, target, { recursive: true });
+    }
   }
 
   if (includeDemoAssets && demoPluginsRoot) {

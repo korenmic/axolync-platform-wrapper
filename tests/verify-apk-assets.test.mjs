@@ -8,7 +8,6 @@ test('assertDemoAssetState accepts the full debug demo payload', () => {
     'assets/public/index.html',
     'assets/public/demo/player.html',
     'assets/public/demo/plugins/demo-lyricflow.js',
-    'assets/public/demo/assets/demo_track.wav',
     'assets/public/demo/assets/house_of_the_rising_sun_instrumental.ogg',
   ];
 
@@ -21,11 +20,10 @@ test('assertDemoAssetState rejects release payloads that still ship demo media o
   const zipEntries = [
     'assets/public/index.html',
     'assets/public/demo/player.html',
-    'assets/public/demo/assets/demo_track.wav',
+    'assets/public/demo/assets/house_of_the_rising_sun_instrumental.ogg',
   ];
 
   assert.throws(() => {
     assertDemoAssetState(zipEntries, false, '/tmp/release.apk');
   }, /unexpectedly ships demo asset in release profile|unexpectedly ships demo asset tree in release profile/);
 });
-

@@ -21,10 +21,11 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
 
   writeFile(path.join(sourceRoot, 'index.html'), '<!doctype html><title>Axolync</title>');
   writeFile(path.join(sourceRoot, 'assets', 'main.js'), 'console.log("browser");');
+  writeFile(path.join(demoAssetsRoot, 'demo_track.wav'), 'wav');
   writeFile(path.join(demoAssetsRoot, 'house_of_the_rising_sun_instrumental.ogg'), 'ogg');
   writeFile(path.join(demoPluginsRoot, 'demo-lyricflow.js'), 'self.onmessage = () => {};');
   writeFile(path.join(demoPluginsRoot, 'metadata', 'demo-lyricflow.manifest.json'), '{"id":"demo-lyricflow"}');
-  writeFile(demoPlayerHtml, '<audio src="./assets/demo_track.wav"></audio>');
+  writeFile(demoPlayerHtml, '<audio src="./assets/house_of_the_rising_sun_instrumental.ogg"></audio>');
 
   const result = stageBrowserAssets({
     sourceRoot,
@@ -49,7 +50,8 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
     fs.readFileSync(path.join(publicDir, 'demo', 'plugins', 'metadata', 'demo-lyricflow.manifest.json'), 'utf8'),
     '{"id":"demo-lyricflow"}'
   );
-  assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'player.html'), 'utf8'), '<audio src="./assets/demo_track.wav"></audio>');
+  assert.equal(fs.existsSync(path.join(publicDir, 'demo', 'assets', 'demo_track.wav')), false);
+  assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'player.html'), 'utf8'), '<audio src="./assets/house_of_the_rising_sun_instrumental.ogg"></audio>');
   assert.equal(fs.readFileSync(path.join(publicDir, 'cordova.js'), 'utf8'), '');
   assert.equal(fs.readFileSync(path.join(publicDir, 'cordova_plugins.js'), 'utf8'), '');
 
@@ -66,10 +68,11 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
 
   writeFile(path.join(sourceRoot, 'index.html'), '<!doctype html><title>Axolync</title>');
   writeFile(path.join(sourceRoot, 'assets', 'main.js'), 'console.log("browser");');
+  writeFile(path.join(demoAssetsRoot, 'demo_track.wav'), 'wav');
   writeFile(path.join(sourceRoot, 'demo', 'plugins', 'demo-lyricflow.js'), 'stale demo payload');
   writeFile(path.join(demoAssetsRoot, 'house_of_the_rising_sun_instrumental.ogg'), 'ogg');
   writeFile(path.join(demoPluginsRoot, 'demo-lyricflow.js'), 'self.onmessage = () => {};');
-  writeFile(demoPlayerHtml, '<audio src="./assets/demo_track.wav"></audio>');
+  writeFile(demoPlayerHtml, '<audio src="./assets/house_of_the_rising_sun_instrumental.ogg"></audio>');
 
   const result = stageBrowserAssets({
     sourceRoot,

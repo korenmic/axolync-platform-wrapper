@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 const DEBUG_DEMO_ENTRIES = [
   'assets/public/demo/player.html',
   'assets/public/demo/plugins/demo-lyricflow.js',
-  'assets/public/demo/assets/demo_track.wav',
   'assets/public/demo/assets/house_of_the_rising_sun_instrumental.ogg',
 ];
 
