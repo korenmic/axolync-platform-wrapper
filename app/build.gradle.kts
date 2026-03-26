@@ -11,8 +11,8 @@ android {
         applicationId = "com.axolync.android"
         minSdk = 24
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.4.0-beta.3"
+        versionCode = 8
+        versionName = "1.6.0-beta.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
