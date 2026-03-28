@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,7 +8,63 @@ const DEBUG_DEMO_ENTRIES = [
   'assets/public/demo/assets/house_of_the_rising_sun_instrumental.ogg',
 ];
 
+const ZIP_LIST_POWERSHELL = [
+  "$ErrorActionPreference = 'Stop'",
+  'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+  '$zip = [System.IO.Compression.ZipFile]::OpenRead($env:AXOLYNC_ARCHIVE_PATH)',
+  'try {',
+  '  foreach ($entry in $zip.Entries) { [Console]::Out.WriteLine($entry.FullName) }',
+  '} finally {',
+  '  $zip.Dispose()',
+  '}'
+].join('; ');
+
+const ZIP_READ_POWERSHELL = [
+  "$ErrorActionPreference = 'Stop'",
+  'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+  '$zip = [System.IO.Compression.ZipFile]::OpenRead($env:AXOLYNC_ARCHIVE_PATH)',
+  'try {',
+  '  $entry = $zip.GetEntry($env:AXOLYNC_ARCHIVE_ENTRY)',
+  '  if ($null -eq $entry) {',
+  "    Write-Error ('missing zip entry: ' + $env:AXOLYNC_ARCHIVE_ENTRY)",
+  '    exit 2',
+  '  }',
+  '  $reader = New-Object System.IO.StreamReader($entry.Open(), [System.Text.Encoding]::UTF8)',
+  '  try {',
+  '    [Console]::Out.Write($reader.ReadToEnd())',
+  '  } finally {',
+  '    $reader.Dispose()',
+  '  }',
+  '} finally {',
+  '  $zip.Dispose()',
+  '}'
+].join('; ');
+
+function commandAvailable(commandName) {
+  const result = process.platform === 'win32'
+    ? spawnSync('where.exe', [commandName], { stdio: 'ignore' })
+    : spawnSync('sh', ['-lc', `command -v ${commandName}`], { stdio: 'ignore' });
+  return result.status === 0;
+}
+
 function readZipEntry(apkPath, entryPath) {
+  if (commandAvailable('unzip')) {
+    return execFileSync('unzip', ['-p', apkPath, entryPath], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  }
+  if (process.platform === 'win32') {
+    return execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ZIP_READ_POWERSHELL], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        AXOLYNC_ARCHIVE_PATH: apkPath,
+        AXOLYNC_ARCHIVE_ENTRY: entryPath,
+      },
+    });
+  }
   return execFileSync('unzip', ['-p', apkPath, entryPath], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -28,6 +84,22 @@ function assertExcludes(haystack, needle, message) {
 }
 
 function listZipEntries(apkPath) {
+  if (commandAvailable('unzip')) {
+    return execFileSync('unzip', ['-Z1', apkPath], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).split('\n').map((line) => line.trim()).filter(Boolean);
+  }
+  if (process.platform === 'win32') {
+    return execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ZIP_LIST_POWERSHELL], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        AXOLYNC_ARCHIVE_PATH: apkPath,
+      },
+    }).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  }
   return execFileSync('unzip', ['-Z1', apkPath], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
