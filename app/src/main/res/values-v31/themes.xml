@@ -3,8 +3,8 @@
     <!-- Android 12+ specific splash screen configuration -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
-        <item name="windowSplashScreenAnimationDuration">200</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_placeholder</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
         <!-- Make icon background same as splash background for seamless look -->
         <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
         <!-- Remove branding image -->

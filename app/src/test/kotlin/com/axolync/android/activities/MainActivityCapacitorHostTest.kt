@@ -20,7 +20,8 @@ class MainActivityCapacitorHostTest {
     fun `main activity is a thin Capacitor bridge host`() {
         val source = repoFile("app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt").readText()
         assertTrue(source.contains("BridgeActivity"))
-        assertTrue(source.contains("class MainActivity : BridgeActivity()"))
+        assertTrue(source.contains("class MainActivity : BridgeActivity"))
+        assertTrue(source.contains("showStartupSplashOverlay"))
     }
 
     @Test

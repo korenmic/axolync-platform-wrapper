@@ -39,10 +39,13 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
 
   assert.equal(result.publicDir, publicDir);
   assert.equal(result.runtimeProfile, 'debug');
-  assert.equal(
-    fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8'),
-    '<!doctype html>\n<script id="axolync-runtime-profile-override">window.__AXOLYNC_RUNTIME_PROFILE = "debug";</script><title>Axolync</title>'
-  );
+  assert.equal(result.nativeStartupSplashVariant, 'artwork');
+  assert.equal(result.nativeStartupSplashMinDurationMs, 2200);
+  const stagedDebugIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_PROFILE = "debug"/);
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_ENABLED = true/);
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_VARIANT = "artwork"/);
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_MIN_DURATION_MS = 2200/);
   assert.equal(fs.readFileSync(path.join(publicDir, 'assets', 'main.js'), 'utf8'), 'console.log("browser");');
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'assets', 'house_of_the_rising_sun_instrumental.ogg'), 'utf8'), 'ogg');
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'plugins', 'demo-lyricflow.js'), 'utf8'), 'self.onmessage = () => {};');
@@ -86,10 +89,11 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
 
   assert.equal(result.runtimeProfile, 'release');
   assert.equal(result.includeDemoAssets, false);
-  assert.equal(
-    fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8'),
-    '<!doctype html>\n<script id="axolync-runtime-profile-override">window.__AXOLYNC_RUNTIME_PROFILE = "release";</script><title>Axolync</title>'
-  );
+  const stagedReleaseIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_PROFILE = "release"/);
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_ENABLED = true/);
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_VARIANT = "artwork"/);
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_MIN_DURATION_MS = 2200/);
   assert.equal(fs.existsSync(path.join(publicDir, 'demo')), false);
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
