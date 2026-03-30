@@ -9,8 +9,9 @@ test('android native splash layout uses a cover backdrop plus contained foregrou
   const layout = readFileSync(resolve(repoRoot, 'app', 'src', 'main', 'res', 'layout', 'activity_splash.xml'), 'utf8');
   assert.match(layout, /android:id="@\+id\/splash_image_backdrop"/);
   assert.match(layout, /android:scaleType="centerCrop"/);
-  assert.match(layout, /android:id="@\+id\/splash_scrim"/);
-  assert.match(layout, /android:background="#94000000"/);
+  assert.match(layout, /android:id="@\+id\/splash_foreground_group"/);
+  assert.match(layout, /android:alpha="0.88"/);
+  assert.match(layout, /android:background="#000000"/);
   assert.match(layout, /android:id="@\+id\/splash_image_foreground"/);
   assert.match(layout, /android:scaleType="fitCenter"/);
   assert.match(layout, /android:src="@drawable\/axolync_logo"/);
