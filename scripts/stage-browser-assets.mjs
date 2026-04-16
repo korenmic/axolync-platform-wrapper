@@ -70,6 +70,8 @@ function buildNativeServiceCompanionHostSnippet() {
     '  };',
     '  const host = Object.freeze({',
     "    hostFamily: 'capacitor',",
+    "    hostPlatform: 'android',",
+    '    hostAbi: null,',
     '    async getStatus(addonId, companionId) {',
     "      return invoke('getStatus', { addonId, companionId });",
     '    },',
