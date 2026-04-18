@@ -61,6 +61,7 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.match(stagedDebugIndex, /hostAbi: \{ enumerable: true, get\(\) \{ return hostMetadata\.hostAbi; \} \}/);
   assert.match(stagedDebugIndex, /invoke\('getHostInfo', \{\}\)/);
   assert.match(stagedDebugIndex, /getConnection/);
+  assert.match(stagedDebugIndex, /getDiagnostics/);
   assert.match(stagedDebugIndex, /clearPersistedRuntimeState/);
   assert.equal(fs.readFileSync(path.join(publicDir, 'assets', 'main.js'), 'utf8'), 'console.log("browser");');
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'assets', 'house_of_the_rising_sun_instrumental.ogg'), 'utf8'), 'ogg');
@@ -124,6 +125,7 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.match(stagedReleaseIndex, /hostPlatform: 'android'/);
   assert.match(stagedReleaseIndex, /window\.Capacitor\.nativePromise/);
   assert.match(stagedReleaseIndex, /invoke\('getHostInfo', \{\}\)/);
+  assert.match(stagedReleaseIndex, /getDiagnostics/);
   assert.equal(fs.existsSync(path.join(publicDir, 'demo')), false);
   assert.equal(fs.existsSync(path.join(publicDir, 'native-service-companions')), false);
 

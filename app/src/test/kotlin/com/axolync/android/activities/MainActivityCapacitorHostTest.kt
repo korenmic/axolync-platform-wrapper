@@ -36,6 +36,7 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("fun getHostInfo"))
         assertTrue(source.contains("fun request"))
         assertTrue(source.contains("fun getConnection"))
+        assertTrue(source.contains("fun getDiagnostics"))
         assertTrue(source.contains("Build.SUPPORTED_ABIS"))
         assertTrue(source.contains("Native bridge is unavailable in this bundle for the current host."))
         assertTrue(source.contains("public/native-service-companions/manifest.json"))

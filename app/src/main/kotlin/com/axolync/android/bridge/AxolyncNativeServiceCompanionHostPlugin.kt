@@ -20,11 +20,21 @@ private const val CAPACITOR_HOST_FAMILY = "capacitor"
 private const val CAPACITOR_HOST_PLATFORM = "android"
 private const val ASSET_MANIFEST_PATH = "public/native-service-companions/manifest.json"
 private const val UNSUPPORTED_BUNDLE_MESSAGE = "Native bridge is unavailable in this bundle for the current host."
+private const val MAX_NATIVE_BRIDGE_DIAGNOSTICS = 200
 private val LOOPBACK_CORS_HEADERS = mapOf(
     "Access-Control-Allow-Origin" to "*",
     "Access-Control-Allow-Methods" to "GET, OPTIONS",
     "Access-Control-Allow-Headers" to "Accept, Content-Type"
 )
+
+private typealias NativeBridgeDiagnosticLogger = (
+    source: String,
+    level: String,
+    addonId: String?,
+    companionId: String?,
+    event: String,
+    details: Map<String, Any?>?
+) -> Unit
 
 private data class NativeBridgeOperatorGeo(
     val altitude: Double,
@@ -52,21 +62,67 @@ private data class NativeBridgeRegistration(
     val operator: NativeBridgeOperatorDescriptor
 )
 
-private class NativeBridgeRuntimeOperator(private val registration: NativeBridgeRegistration) {
+private data class NativeBridgeDiagnosticEntry(
+    val atMs: Long,
+    val source: String,
+    val level: String,
+    val addonId: String?,
+    val companionId: String?,
+    val event: String,
+    val details: Map<String, Any?>?
+)
+
+private class NativeBridgeRuntimeOperator(
+    private val registration: NativeBridgeRegistration,
+    private val logger: NativeBridgeDiagnosticLogger
+) {
     private var loopbackServer: ShazamDiscoveryLoopbackServer? = null
 
     fun start() {
         if (loopbackServer != null) {
+            logger(
+                "runtime-operator",
+                "info",
+                registration.addonId,
+                registration.companionId,
+                "runtime-operator.start.skipped-already-running",
+                null
+            )
             return
         }
-        val server = ShazamDiscoveryLoopbackServer(registration.operator)
+        logger(
+            "runtime-operator",
+            "info",
+            registration.addonId,
+            registration.companionId,
+            "runtime-operator.start.requested",
+            mapOf("entrypoint" to registration.entrypoint)
+        )
+        val server = ShazamDiscoveryLoopbackServer(registration, registration.operator, logger)
         server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
         loopbackServer = server
+        logger(
+            "runtime-operator",
+            "info",
+            registration.addonId,
+            registration.companionId,
+            "runtime-operator.started",
+            mapOf("baseUrl" to server.baseUrl())
+        )
     }
 
     fun stop() {
+        val baseUrl = loopbackServer?.baseUrl()
         loopbackServer?.stop()
         loopbackServer = null
+        logger(
+            "runtime-operator",
+            "info",
+            registration.addonId,
+            registration.companionId,
+            "runtime-operator.stopped",
+            mapOf("baseUrl" to baseUrl)
+        )
     }
 
     fun getConnection(): JSObject? {
@@ -93,16 +149,37 @@ private class NativeBridgeRuntimeOperator(private val registration: NativeBridge
 }
 
 private class ShazamDiscoveryLoopbackServer(
-    private val descriptor: NativeBridgeOperatorDescriptor
+    private val registration: NativeBridgeRegistration,
+    private val descriptor: NativeBridgeOperatorDescriptor,
+    private val logger: NativeBridgeDiagnosticLogger
 ) : NanoHTTPD("127.0.0.1", 0) {
 
     fun baseUrl(): String = "http://127.0.0.1:$listeningPort${descriptor.listenPath}"
 
     override fun serve(session: IHTTPSession): Response {
+        logger(
+            "runtime-operator",
+            "info",
+            registration.addonId,
+            registration.companionId,
+            "runtime-operator.loopback.request.received",
+            mapOf(
+                "method" to session.method.name,
+                "path" to session.uri
+            )
+        )
         if (session.method == Method.OPTIONS) {
             return jsonResponse(Response.Status.NO_CONTENT, "")
         }
         if (session.uri != descriptor.listenPath) {
+            logger(
+                "runtime-operator",
+                "warn",
+                registration.addonId,
+                registration.companionId,
+                "runtime-operator.loopback.request.unknown-path",
+                mapOf("path" to session.uri)
+            )
             return jsonResponse(
                 Response.Status.NOT_FOUND,
                 JSONObject().put("error", "Unknown runtime operator path.").toString()
@@ -111,6 +188,17 @@ private class ShazamDiscoveryLoopbackServer(
         val uri = session.parameters["uri"]?.firstOrNull()
         val sampleMs = session.parameters["samplems"]?.firstOrNull()
         if (uri.isNullOrBlank() || sampleMs.isNullOrBlank()) {
+            logger(
+                "runtime-operator",
+                "warn",
+                registration.addonId,
+                registration.companionId,
+                "runtime-operator.loopback.request.missing-query",
+                mapOf(
+                    "hasUri" to (!uri.isNullOrBlank()),
+                    "hasSampleMs" to (!sampleMs.isNullOrBlank())
+                )
+            )
             return jsonResponse(
                 Response.Status.BAD_REQUEST,
                 JSONObject().put("error", "Missing required query parameters: uri and samplems").toString()
@@ -118,8 +206,27 @@ private class ShazamDiscoveryLoopbackServer(
         }
         return try {
             val responseBody = proxyShazamDiscoveryRequest(uri, sampleMs)
+            logger(
+                "runtime-operator",
+                "info",
+                registration.addonId,
+                registration.companionId,
+                "runtime-operator.loopback.request.completed",
+                mapOf("sampleMs" to sampleMs)
+            )
             jsonResponse(Response.Status.OK, responseBody)
         } catch (error: Throwable) {
+            logger(
+                "runtime-operator",
+                "error",
+                registration.addonId,
+                registration.companionId,
+                "runtime-operator.loopback.request.failed",
+                mapOf(
+                    "sampleMs" to sampleMs,
+                    "error" to (error.message ?: error.toString())
+                )
+            )
             jsonResponse(
                 Response.Status.INTERNAL_ERROR,
                 JSONObject()
@@ -221,17 +328,34 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     private val enabledState = mutableMapOf<String, Boolean>()
     private val lastErrorState = mutableMapOf<String, String?>()
     private val runtimeOperators = mutableMapOf<String, NativeBridgeRuntimeOperator>()
+    private val diagnostics = mutableListOf<NativeBridgeDiagnosticEntry>()
     private val registrationByKey: MutableMap<String, NativeBridgeRegistration> by lazy { loadRegistrations().toMutableMap() }
 
     @PluginMethod
     fun getStatus(call: PluginCall) {
         val addonId = call.getString("addonId").orEmpty()
         val companionId = call.getString("companionId").orEmpty()
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = addonId,
+            companionId = companionId,
+            event = "companion.status.requested",
+            details = null
+        )
         call.resolve(buildStatusEnvelope(addonId, companionId, null))
     }
 
     @PluginMethod
     fun getHostInfo(call: PluginCall) {
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = null,
+            companionId = null,
+            event = "host.info.requested",
+            details = null
+        )
         call.resolve(
             JSObject().apply {
                 put("hostFamily", CAPACITOR_HOST_FAMILY)
@@ -248,10 +372,26 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         val enabled = call.getBoolean("enabled", false) ?: false
         val key = companionKey(addonId, companionId)
         if (resolveRegistration(addonId, companionId) == null) {
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "warn",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.enable.unsupported",
+                details = null
+            )
             call.resolve(buildUnsupportedStatusEnvelope(addonId, companionId))
             return
         }
         enabledState[key] = enabled
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = addonId,
+            companionId = companionId,
+            event = "companion.enabled.updated",
+            details = mapOf("enabled" to enabled)
+        )
         if (!enabled) {
             runtimeOperators.remove(key)?.stop()
             lastErrorState.remove(key)
@@ -265,17 +405,51 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         val companionId = call.getString("companionId").orEmpty()
         val registration = resolveRegistration(addonId, companionId)
         if (registration == null) {
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "warn",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.start.unsupported",
+                details = null
+            )
             call.resolve(buildUnsupportedStatusEnvelope(addonId, companionId))
             return
         }
         val key = companionKey(addonId, companionId)
         enabledState[key] = true
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = addonId,
+            companionId = companionId,
+            event = "companion.start.requested",
+            details = mapOf("entrypoint" to registration.entrypoint)
+        )
         try {
-            val runtime = runtimeOperators.getOrPut(key) { NativeBridgeRuntimeOperator(registration) }
+            val runtime = runtimeOperators.getOrPut(key) {
+                NativeBridgeRuntimeOperator(registration, ::appendDiagnostic)
+            }
             runtime.start()
             lastErrorState.remove(key)
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "info",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.start.completed",
+                details = mapOf("baseUrl" to runtime.getConnection()?.getString("baseUrl"))
+            )
         } catch (error: Throwable) {
             lastErrorState[key] = error.message ?: error.toString()
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "error",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.start.failed",
+                details = mapOf("error" to lastErrorState[key])
+            )
         }
         call.resolve(buildStatusEnvelope(addonId, companionId, null))
     }
@@ -285,6 +459,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         val addonId = call.getString("addonId").orEmpty()
         val companionId = call.getString("companionId").orEmpty()
         val key = companionKey(addonId, companionId)
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = addonId,
+            companionId = companionId,
+            event = "companion.stop.requested",
+            details = null
+        )
         runtimeOperators.remove(key)?.stop()
         lastErrorState.remove(key)
         call.resolve(buildStatusEnvelope(addonId, companionId, null))
@@ -297,6 +479,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         val key = companionKey(addonId, companionId)
         val runtime = runtimeOperators[key]
         if (resolveRegistration(addonId, companionId) == null) {
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "warn",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.request.unsupported",
+                details = null
+            )
             call.resolve(
                 buildResponseEnvelope(
                     addonId,
@@ -309,6 +499,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             return
         }
         if (runtime == null) {
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "warn",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.request.not-running",
+                details = null
+            )
             call.resolve(
                 buildResponseEnvelope(
                     addonId,
@@ -324,9 +522,28 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             val operation = call.getObject("request")?.getString("operation").orEmpty()
             val payload = runtime.handleRequest(operation)
             lastErrorState.remove(key)
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "info",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.request.completed",
+                details = mapOf("operation" to operation)
+            )
             call.resolve(buildResponseEnvelope(addonId, companionId, ok = true, payload = payload, error = null))
         } catch (error: Throwable) {
             lastErrorState[key] = error.message ?: error.toString()
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "error",
+                addonId = addonId,
+                companionId = companionId,
+                event = "companion.request.failed",
+                details = mapOf(
+                    "operation" to call.getObject("request")?.getString("operation"),
+                    "error" to lastErrorState[key]
+                )
+            )
             call.resolve(
                 buildResponseEnvelope(
                     addonId,
@@ -343,6 +560,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     fun getConnection(call: PluginCall) {
         val addonId = call.getString("addonId").orEmpty()
         val companionId = call.getString("companionId").orEmpty()
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = addonId,
+            companionId = companionId,
+            event = "companion.connection.requested",
+            details = null
+        )
         val envelope = JSObject()
         envelope.put("addonId", addonId)
         envelope.put("companionId", companionId)
@@ -351,6 +576,11 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             runtimeOperators[companionKey(addonId, companionId)]?.getConnection() ?: JSONObject.NULL
         )
         call.resolve(envelope)
+    }
+
+    @PluginMethod
+    fun getDiagnostics(call: PluginCall) {
+        call.resolve(buildDiagnosticsEnvelope())
     }
 
     override fun handleOnDestroy() {
@@ -429,6 +659,59 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         return envelope
     }
 
+    private fun appendDiagnostic(
+        source: String,
+        level: String,
+        addonId: String?,
+        companionId: String?,
+        event: String,
+        details: Map<String, Any?>?
+    ) {
+        synchronized(diagnostics) {
+            diagnostics += NativeBridgeDiagnosticEntry(
+                atMs = System.currentTimeMillis(),
+                source = source,
+                level = level,
+                addonId = addonId,
+                companionId = companionId,
+                event = event,
+                details = details
+            )
+            if (diagnostics.size > MAX_NATIVE_BRIDGE_DIAGNOSTICS) {
+                diagnostics.subList(0, diagnostics.size - MAX_NATIVE_BRIDGE_DIAGNOSTICS).clear()
+            }
+        }
+    }
+
+    private fun buildDiagnosticsEnvelope(): JSObject {
+        val logs = synchronized(diagnostics) { diagnostics.toList() }
+        return JSObject().apply {
+            put("hostFamily", CAPACITOR_HOST_FAMILY)
+            put("hostPlatform", CAPACITOR_HOST_PLATFORM)
+            put("hostAbi", detectHostAbi())
+            put("generatedAtMs", System.currentTimeMillis())
+            put("collectionMethod", "native-bridge-host")
+            put(
+                "logs",
+                JSONArray().apply {
+                    logs.forEach { entry ->
+                        put(
+                            JSObject().apply {
+                                put("atMs", entry.atMs)
+                                put("source", entry.source)
+                                put("level", entry.level)
+                                put("addonId", entry.addonId ?: JSONObject.NULL)
+                                put("companionId", entry.companionId ?: JSONObject.NULL)
+                                put("event", entry.event)
+                                put("details", entry.details?.toJsonObject() ?: JSONObject.NULL)
+                            }
+                        )
+                    }
+                }
+            )
+        }
+    }
+
     private fun loadRegistrations(): Map<String, NativeBridgeRegistration> {
         val manifestText = readAssetText(ASSET_MANIFEST_PATH) ?: return emptyMap()
         val parsed = JSONObject(manifestText)
@@ -457,6 +740,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                 operator = descriptor
             )
         }
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = null,
+            companionId = null,
+            event = "host.registrations.loaded",
+            details = mapOf("count" to resolved.size)
+        )
         return resolved
     }
 
@@ -496,6 +787,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                 if (value.isNotEmpty()) {
                     add(value)
                 }
+            }
+        }
+    }
+
+    private fun Map<String, Any?>.toJsonObject(): JSObject {
+        return JSObject().apply {
+            this@toJsonObject.forEach { (key, value) ->
+                put(key, value ?: JSONObject.NULL)
             }
         }
     }
