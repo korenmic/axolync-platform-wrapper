@@ -35,8 +35,10 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("fun stop"))
         assertTrue(source.contains("fun request"))
         assertTrue(source.contains("fun getConnection"))
-        assertTrue(source.contains("No native service companion is registered on this Capacitor host."))
+        assertTrue(source.contains("Native bridge is unavailable in this bundle for the current host."))
+        assertTrue(source.contains("public/native-service-companions/manifest.json"))
         assertFalse(source.contains("vibra"))
+        assertFalse(source.contains("No native service companion is registered on this Capacitor host."))
     }
 
     @Test

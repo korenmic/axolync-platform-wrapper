@@ -201,6 +201,15 @@ export function resolveDemoPlayerHtml(currentRepoRoot = repoRoot) {
   return fs.existsSync(fallback) ? fallback : null;
 }
 
+export function resolveNativeServiceCompanionAssetsRoot() {
+  const builderNativeBridgeAssets = process.env.AXOLYNC_BUILDER_NATIVE_SERVICE_COMPANION_ASSETS?.trim();
+  if (builderNativeBridgeAssets) {
+    const resolved = path.resolve(builderNativeBridgeAssets);
+    return fs.existsSync(resolved) ? resolved : null;
+  }
+  return null;
+}
+
 export function resolveAndroidBuildFlavor() {
   return normalizeBuildFlavor(process.env.AXOLYNC_ANDROID_BUILD_FLAVOR);
 }
@@ -249,6 +258,7 @@ export function stageBrowserAssets(options = {}) {
   const nativeStartupSplashVariant = options.nativeStartupSplashVariant ?? resolveAndroidNativeStartupSplashVariant();
   const nativeStartupSplashFitMode = options.nativeStartupSplashFitMode ?? resolveAndroidNativeStartupSplashFitMode(nativeStartupSplashVariant);
   const nativeStartupSplashMinDurationMs = options.nativeStartupSplashMinDurationMs ?? resolveAndroidNativeStartupSplashMinDurationMs();
+  const nativeServiceCompanionAssetsRoot = options.nativeServiceCompanionAssetsRoot ?? resolveNativeServiceCompanionAssetsRoot();
 
   ensureRequiredBrowserFiles(sourceRoot);
 
@@ -271,6 +281,14 @@ export function stageBrowserAssets(options = {}) {
     ),
     'utf8',
   );
+
+  const nativeServiceCompanionTarget = path.join(targetPublicDir, 'native-service-companions');
+  if (nativeServiceCompanionAssetsRoot) {
+    fs.rmSync(nativeServiceCompanionTarget, { recursive: true, force: true });
+    fs.cpSync(nativeServiceCompanionAssetsRoot, nativeServiceCompanionTarget, { recursive: true });
+  } else {
+    fs.rmSync(nativeServiceCompanionTarget, { recursive: true, force: true });
+  }
 
   if (!includeDemoAssets) {
     fs.rmSync(path.join(targetPublicDir, 'demo'), { recursive: true, force: true });
@@ -314,6 +332,7 @@ export function stageBrowserAssets(options = {}) {
     demoPlayerHtml,
     buildFlavor,
     includeDemoAssets,
+    nativeServiceCompanionAssetsRoot,
     nativeStartupSplashVariant,
     nativeStartupSplashFitMode,
     nativeStartupSplashMinDurationMs,
