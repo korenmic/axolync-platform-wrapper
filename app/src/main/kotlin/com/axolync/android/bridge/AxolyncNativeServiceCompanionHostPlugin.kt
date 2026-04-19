@@ -1,10 +1,6 @@
 package com.axolync.android.bridge
 
-import android.content.ContentValues
 import android.net.Uri
-import android.os.Environment
-import android.provider.MediaStore
-import android.util.Base64
 import android.util.Log
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -15,7 +11,6 @@ import fi.iki.elonen.NanoHTTPD
 import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.io.FileNotFoundException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -28,8 +23,6 @@ private const val CAPACITOR_HOST_PLATFORM = "android"
 private const val ASSET_MANIFEST_PATH = "public/native-service-companions/manifest.json"
 private const val UNSUPPORTED_BUNDLE_MESSAGE = "Native bridge is unavailable in this bundle for the current host."
 private const val MAX_NATIVE_BRIDGE_DIAGNOSTICS = 200
-private const val DEBUG_ARCHIVE_MIME_TYPE = "application/zip"
-private const val DEBUG_ARCHIVE_FALLBACK_NAME = "axolync-debug.zip"
 private val LOOPBACK_CORS_HEADERS = mapOf(
     "Access-Control-Allow-Origin" to "*",
     "Access-Control-Allow-Methods" to "GET, OPTIONS",
@@ -776,52 +769,12 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     private fun persistDebugArchive(fileName: String, base64Payload: String): JSObject {
-        return try {
-            val safeName = fileName.trim().ifBlank { DEBUG_ARCHIVE_FALLBACK_NAME }
-            val bytes = Base64.decode(base64Payload, Base64.DEFAULT)
-            val savedUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, safeName)
-                    put(MediaStore.Downloads.MIME_TYPE, DEBUG_ARCHIVE_MIME_TYPE)
-                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Axolync")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: throw IllegalStateException("Failed to create MediaStore debug archive entry")
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    output.write(bytes)
-                    output.flush()
-                } ?: throw IllegalStateException("Failed to open MediaStore debug archive stream")
-                values.clear()
-                values.put(MediaStore.Downloads.IS_PENDING, 0)
-                context.contentResolver.update(uri, values, null, null)
-                uri
-            } else {
-                val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                    ?: throw IllegalStateException("External downloads directory unavailable")
-                val target = File(downloadsDir, safeName)
-                target.outputStream().use { output ->
-                    output.write(bytes)
-                    output.flush()
-                }
-                Uri.fromFile(target)
-            }
-
-            JSObject().apply {
-                put("success", true)
-                put("fileName", safeName)
-                put("uri", savedUri.toString())
-                put("error", JSONObject.NULL)
-            }
-        } catch (error: Exception) {
-            Log.e("AxolyncNativeServiceCompanionHost", "Failed to save debug archive", error)
-            JSObject().apply {
-                put("success", false)
-                put("fileName", fileName.trim().ifBlank { DEBUG_ARCHIVE_FALLBACK_NAME })
-                put("uri", JSONObject.NULL)
-                put("error", error.message ?: error.toString())
-            }
-        }
+        return persistDebugArchive(
+            context = context,
+            fileName = fileName,
+            base64Payload = base64Payload,
+            logTag = "AxolyncNativeServiceCompanionHost"
+        )
     }
 
     private fun loadRegistrations(): Map<String, NativeBridgeRegistration> {

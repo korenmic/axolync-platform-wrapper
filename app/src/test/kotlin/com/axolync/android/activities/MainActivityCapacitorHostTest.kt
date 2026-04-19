@@ -22,8 +22,17 @@ class MainActivityCapacitorHostTest {
         val source = repoFile("app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt").readText()
         assertTrue(source.contains("BridgeActivity"))
         assertTrue(source.contains("class MainActivity : BridgeActivity"))
+        assertTrue(source.contains("registerPlugin(AxolyncDebugArchiveSavePlugin::class.java)"))
         assertTrue(source.contains("registerPlugin(AxolyncNativeServiceCompanionHostPlugin::class.java)"))
         assertTrue(source.contains("showStartupSplashOverlay"))
+    }
+
+    @Test
+    fun `dedicated Capacitor debug archive plugin owns the Android-visible save capability`() {
+        val source = repoFile("app/src/main/kotlin/com/axolync/android/bridge/AxolyncDebugArchiveSavePlugin.kt").readText()
+        assertTrue(source.contains("@CapacitorPlugin(name = \"AxolyncDebugArchiveSave\")"))
+        assertTrue(source.contains("fun saveDebugArchiveBase64"))
+        assertTrue(source.contains("persistDebugArchive"))
     }
 
     @Test
@@ -67,6 +76,8 @@ class MainActivityCapacitorHostTest {
         val rootRegistry = repoFile("app/src/main/assets/capacitor.plugins.json").readText()
         val nestedRegistry = repoFile("app/src/main/assets/capacitor/capacitor.plugins.json").readText()
 
+        assertTrue(rootRegistry.contains("com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin"))
+        assertTrue(rootRegistry.contains("axolync-debug-archive-save"))
         assertTrue(rootRegistry.contains("com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin"))
         assertTrue(rootRegistry.contains("axolync-native-bridge-host"))
         assertEquals(rootRegistry.trim(), nestedRegistry.trim())

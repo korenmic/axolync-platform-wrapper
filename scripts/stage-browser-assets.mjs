@@ -9,6 +9,10 @@ const capacitorAssetsDir = path.join(assetsRoot, 'capacitor');
 const CAPACITOR_PLUGIN_REGISTRY_FILENAME = 'capacitor.plugins.json';
 const CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY = Object.freeze([
   Object.freeze({
+    pkg: 'axolync-debug-archive-save',
+    classpath: 'com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin',
+  }),
+  Object.freeze({
     pkg: 'axolync-native-bridge-host',
     classpath: 'com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin',
   }),

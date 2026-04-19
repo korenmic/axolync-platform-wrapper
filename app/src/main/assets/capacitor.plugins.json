@@ -1,5 +1,9 @@
 [
   {
+    "pkg": "axolync-debug-archive-save",
+    "classpath": "com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin"
+  },
+  {
     "pkg": "axolync-native-bridge-host",
     "classpath": "com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin"
   }

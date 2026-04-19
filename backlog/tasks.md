@@ -1,3 +1,10 @@
 # Android Wrapper Backlog
 
 - [x] Restore native debug archive save in the active Capacitor host so browser-generated debug ZIP exports land in a truthful Android-visible location and return structured `{ success, uri, error }` results instead of falling back to fragile WebView blob-download behavior.
+
+- [x] Replace Android debug archive save's dependency on the native service companion bridge with a dedicated Capacitor-native save capability.
+  - The current failure shape still reaches `Native debug archive save requested` and then dies with `Capacitor native service companion bridge is unavailable.`, which proves debug archive export is still coupled to the broader native companion bootstrap instead of standing on its own.
+  - Give debug archive save its own dedicated Capacitor plugin/capability path rather than routing it through `AxolyncNativeServiceCompanionHost`.
+  - Prefer the standard Capacitor plugin publication path for this dedicated save capability so Android file export is not blocked by native proxy/native companion bootstrap failures.
+  - Preserve truthful Android-visible save semantics and the structured `{ success, uri, error }` result contract for browser.
+  - Keep the operator-facing target explicit: a successful Android save should return a truthful URI/location for the written archive rather than silently falling back to a best-effort WebView blob download.

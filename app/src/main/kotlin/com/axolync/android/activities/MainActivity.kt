@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.axolync.android.R
+import com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin
 import com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin
 import com.getcapacitor.BridgeActivity
 
@@ -16,6 +17,7 @@ class MainActivity : BridgeActivity() {
     private var startupSplashOverlay: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        registerPlugin(AxolyncDebugArchiveSavePlugin::class.java)
         registerPlugin(AxolyncNativeServiceCompanionHostPlugin::class.java)
         super.onCreate(savedInstanceState)
         showStartupSplashOverlay()

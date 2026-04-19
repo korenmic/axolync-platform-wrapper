@@ -48,6 +48,10 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.equal(result.nativeServiceCompanionAssetsRoot, nativeServiceCompanionAssetsRoot);
   assert.deepEqual(result.capacitorPluginRegistry.entries, [
     {
+      pkg: 'axolync-debug-archive-save',
+      classpath: 'com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin',
+    },
+    {
       pkg: 'axolync-native-bridge-host',
       classpath: 'com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin',
     },
