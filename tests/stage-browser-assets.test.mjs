@@ -65,10 +65,14 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
   assert.match(stagedDebugIndex, /BRIDGE_PUBLICATION = Object\.freeze/);
+  assert.match(stagedDebugIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\.\/native-bridge\.js'/);
   assert.match(stagedDebugIndex, /publicationMode: 'capacitor-plugin-registry'/);
   assert.match(stagedDebugIndex, /pluginRegistryAssetPath: 'capacitor\.plugins\.json'/);
   assert.match(stagedDebugIndex, /mirroredPluginRegistryAssetPath: 'capacitor\/capacitor\.plugins\.json'/);
   assert.match(stagedDebugIndex, /buildBootstrapSnapshot = function\(\)/);
+  assert.match(stagedDebugIndex, /ensureBridgeRuntimeLoaded = function\(\)/);
+  assert.match(stagedDebugIndex, /data-axolync-capacitor-native-bridge-runtime/);
+  assert.match(stagedDebugIndex, /Failed to load packaged Capacitor native bridge runtime\./);
   assert.match(stagedDebugIndex, /buildUnavailableBridgeError = function\(methodName, payload\)/);
   assert.match(stagedDebugIndex, /window\.Capacitor\.Plugins\.AxolyncNativeServiceCompanionHost/);
   assert.match(stagedDebugIndex, /window\.Capacitor\.nativePromise/);
@@ -153,7 +157,9 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
   assert.match(stagedReleaseIndex, /hostPlatform: 'android'/);
+  assert.match(stagedReleaseIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\.\/native-bridge\.js'/);
   assert.match(stagedReleaseIndex, /window\.Capacitor\.nativePromise/);
+  assert.match(stagedReleaseIndex, /ensureBridgeRuntimeLoaded = function\(\)/);
   assert.match(stagedReleaseIndex, /invoke\('getHostInfo', \{\}\)/);
   assert.match(stagedReleaseIndex, /invoke\('saveDebugArchiveBase64', \{ fileName, base64Payload \}\)/);
   assert.match(stagedReleaseIndex, /getDiagnostics/);
