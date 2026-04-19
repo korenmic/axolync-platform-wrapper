@@ -54,12 +54,14 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_FIT_MODE = "contain"/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_MIN_DURATION_MS = 2200/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__/);
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
   assert.match(stagedDebugIndex, /window\.Capacitor\.Plugins\.AxolyncNativeServiceCompanionHost/);
   assert.match(stagedDebugIndex, /window\.Capacitor\.nativePromise/);
   assert.match(stagedDebugIndex, /hostPlatform: 'android'/);
   assert.match(stagedDebugIndex, /hostAbi: \{ enumerable: true, get\(\) \{ return hostMetadata\.hostAbi; \} \}/);
   assert.match(stagedDebugIndex, /invoke\('getHostInfo', \{\}\)/);
+  assert.match(stagedDebugIndex, /invoke\('saveDebugArchiveBase64', \{ fileName, base64Payload \}\)/);
   assert.match(stagedDebugIndex, /getConnection/);
   assert.match(stagedDebugIndex, /getDiagnostics/);
   assert.match(stagedDebugIndex, /clearPersistedRuntimeState/);
@@ -121,10 +123,12 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_FIT_MODE = "contain"/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_MIN_DURATION_MS = 2200/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST_FAMILY = 'capacitor'/);
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
   assert.match(stagedReleaseIndex, /hostPlatform: 'android'/);
   assert.match(stagedReleaseIndex, /window\.Capacitor\.nativePromise/);
   assert.match(stagedReleaseIndex, /invoke\('getHostInfo', \{\}\)/);
+  assert.match(stagedReleaseIndex, /invoke\('saveDebugArchiveBase64', \{ fileName, base64Payload \}\)/);
   assert.match(stagedReleaseIndex, /getDiagnostics/);
   assert.equal(fs.existsSync(path.join(publicDir, 'demo')), false);
   assert.equal(fs.existsSync(path.join(publicDir, 'native-service-companions')), false);
