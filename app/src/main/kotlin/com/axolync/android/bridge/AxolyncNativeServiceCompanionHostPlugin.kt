@@ -744,6 +744,17 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             put("generatedAtMs", System.currentTimeMillis())
             put("collectionMethod", "native-bridge-host")
             put(
+                "bridgePublication",
+                JSObject().apply {
+                    put("publicationMode", "capacitor-plugin-registry")
+                    put("pluginName", "AxolyncNativeServiceCompanionHost")
+                    put("pluginRegistryAssetPath", "capacitor.plugins.json")
+                    put("mirroredPluginRegistryAssetPath", "capacitor/capacitor.plugins.json")
+                    put("packageName", "axolync-native-bridge-host")
+                    put("classpath", "com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin")
+                }
+            )
+            put(
                 "logs",
                 JSONArray().apply {
                     logs.forEach { entry ->
