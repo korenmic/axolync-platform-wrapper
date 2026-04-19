@@ -3,7 +3,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const assetsRoot = path.join(repoRoot, 'app', 'src', 'main', 'assets');
 const publicDir = path.join(repoRoot, 'app', 'src', 'main', 'assets', 'public');
+const capacitorAssetsDir = path.join(assetsRoot, 'capacitor');
+const CAPACITOR_PLUGIN_REGISTRY_FILENAME = 'capacitor.plugins.json';
+const CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY = Object.freeze([
+  Object.freeze({
+    pkg: 'axolync-native-bridge-host',
+    classpath: 'com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin',
+  }),
+]);
 const BUILD_FLAVOR_SNIPPET_MARKER = 'id="axolync-build-flavor-override"';
 const NATIVE_STARTUP_SPLASH_SNIPPET_MARKER = 'id="axolync-native-startup-splash-override"';
 const NATIVE_SERVICE_COMPANION_HOST_SNIPPET_MARKER = 'id="axolync-native-service-companion-host-override"';
@@ -287,9 +296,26 @@ function ensureRequiredBrowserFiles(sourceRoot) {
   }
 }
 
+function writeCapacitorPluginRegistry(assetRoot) {
+  const registryJson = `${JSON.stringify(CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY, null, 2)}\n`;
+  for (const targetPath of [
+    path.join(assetRoot, CAPACITOR_PLUGIN_REGISTRY_FILENAME),
+    path.join(assetRoot, 'capacitor', CAPACITOR_PLUGIN_REGISTRY_FILENAME),
+  ]) {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, registryJson, 'utf8');
+  }
+  return {
+    rootPath: path.join(assetRoot, CAPACITOR_PLUGIN_REGISTRY_FILENAME),
+    nestedPath: path.join(assetRoot, 'capacitor', CAPACITOR_PLUGIN_REGISTRY_FILENAME),
+    entries: CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY,
+  };
+}
+
 export function stageBrowserAssets(options = {}) {
   const sourceRoot = options.sourceRoot ?? resolveSourceRoot();
   const targetPublicDir = options.publicDir ?? publicDir;
+  const targetAssetRoot = options.assetRoot ?? assetsRoot;
   const demoAssetsRoot = options.demoAssetsRoot ?? resolveDemoAssetsRoot();
   const demoPluginsRoot = options.demoPluginsRoot ?? resolveDemoPluginsRoot();
   const demoPlayerHtml = options.demoPlayerHtml ?? resolveDemoPlayerHtml();
@@ -301,6 +327,7 @@ export function stageBrowserAssets(options = {}) {
   const nativeServiceCompanionAssetsRoot = options.nativeServiceCompanionAssetsRoot ?? resolveNativeServiceCompanionAssetsRoot();
 
   ensureRequiredBrowserFiles(sourceRoot);
+  const capacitorPluginRegistry = writeCapacitorPluginRegistry(targetAssetRoot);
 
   fs.rmSync(targetPublicDir, { recursive: true, force: true });
   fs.mkdirSync(targetPublicDir, { recursive: true });
@@ -373,6 +400,7 @@ export function stageBrowserAssets(options = {}) {
     buildFlavor,
     includeDemoAssets,
     nativeServiceCompanionAssetsRoot,
+    capacitorPluginRegistry,
     nativeStartupSplashVariant,
     nativeStartupSplashFitMode,
     nativeStartupSplashMinDurationMs,

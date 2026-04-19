@@ -1,6 +1,7 @@
 package com.axolync.android.activities
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -45,6 +46,16 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("public/native-service-companions/manifest.json"))
         assertFalse(source.contains("vibra"))
         assertFalse(source.contains("No native service companion is registered on this Capacitor host."))
+    }
+
+    @Test
+    fun `capacitor plugin registry publishes the native bridge host class at the asset root`() {
+        val rootRegistry = repoFile("app/src/main/assets/capacitor.plugins.json").readText()
+        val nestedRegistry = repoFile("app/src/main/assets/capacitor/capacitor.plugins.json").readText()
+
+        assertTrue(rootRegistry.contains("com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin"))
+        assertTrue(rootRegistry.contains("axolync-native-bridge-host"))
+        assertEquals(rootRegistry.trim(), nestedRegistry.trim())
     }
 
     @Test
