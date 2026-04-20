@@ -29,6 +29,11 @@ class MainActivityNativeBridgeInvocationTest {
             assertTrue(snapshot.optBoolean("hasInjectedNativeBridgeHost", false))
 
             val diagnostics = result.optJSONObject("diagnostics")
+            val statusResult = result.optJSONObject("statusResult")
+            val enabledResult = result.optJSONObject("enabledResult")
+            val startResult = result.optJSONObject("startResult")
+            val connectionResult = result.optJSONObject("connectionResult")
+            val statusAfterStart = result.optJSONObject("statusAfterStart")
             if (diagnostics != null) {
                 val bridgePublication = diagnostics.optJSONObject("bridgePublication")
                 requireNotNull(bridgePublication) { "Expected bridge publication metadata in diagnostics." }
@@ -36,6 +41,25 @@ class MainActivityNativeBridgeInvocationTest {
                 assertEquals("capacitor-plugin-registry", bridgePublication.optString("publicationMode"))
                 assertTrue(diagnostics.optLong("generatedAtMs", 0L) > 0L)
                 assertTrue(diagnostics.has("collectionMethod"))
+                val logs = diagnostics.optJSONArray("logs")
+                requireNotNull(logs) { "Expected diagnostics logs to describe the host bootstrap. Result: $result" }
+                assertTrue(
+                    (0 until logs.length()).any { index ->
+                        logs.optJSONObject(index)?.optString("event") == "host.info.requested"
+                    },
+                )
+                requireNotNull(statusResult) { "Expected getStatus() to return a structured status payload. Result: $result" }
+                assertEquals("axolync-addon-vibra", statusResult.optString("addonId"))
+                assertEquals("vibra_proxy", statusResult.optString("companionId"))
+                assertTrue(statusResult.has("status"))
+                requireNotNull(enabledResult) { "Expected setEnabled() to return a structured status payload. Result: $result" }
+                assertTrue(enabledResult.has("status"))
+                requireNotNull(startResult) { "Expected start() to return a structured status payload. Result: $result" }
+                assertTrue(startResult.has("status"))
+                requireNotNull(connectionResult) { "Expected getConnection() to return a structured payload. Result: $result" }
+                assertTrue(connectionResult.has("connection"))
+                requireNotNull(statusAfterStart) { "Expected post-start getStatus() to return a structured payload. Result: $result" }
+                assertTrue(statusAfterStart.has("status"))
             } else {
                 val error = result.optJSONObject("error")
                 requireNotNull(error) { "Expected either diagnostics or a structured invocation error." }
@@ -100,13 +124,30 @@ class MainActivityNativeBridgeInvocationTest {
               }, 5000);
               Promise.resolve()
                 .then(() => window.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__.getDiagnostics())
-                .then((diagnostics) => {
+                .then(async (diagnostics) => {
+                  const publishedPlugin = window.Capacitor && window.Capacitor.Plugins
+                    ? window.Capacitor.Plugins.AxolyncNativeServiceCompanionHost
+                    : null;
+                  const hostInfo = publishedPlugin && typeof publishedPlugin.getHostInfo === 'function'
+                    ? await publishedPlugin.getHostInfo({})
+                    : null;
+                  const statusResult = await window.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__.getStatus('axolync-addon-vibra', 'vibra_proxy');
+                  const enabledResult = await window.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__.setEnabled('axolync-addon-vibra', 'vibra_proxy', true);
+                  const startResult = await window.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__.start('axolync-addon-vibra', 'vibra_proxy');
+                  const connectionResult = await window.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__.getConnection('axolync-addon-vibra', 'vibra_proxy');
+                  const statusAfterStart = await window.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__.getStatus('axolync-addon-vibra', 'vibra_proxy');
                   clearTimeout(timeoutId);
                   finish({
                     ready: true,
                     invoked: true,
                     snapshot,
                     diagnostics,
+                    hostInfo,
+                    statusResult,
+                    enabledResult,
+                    startResult,
+                    connectionResult,
+                    statusAfterStart,
                   });
                 })
                 .catch((error) => {

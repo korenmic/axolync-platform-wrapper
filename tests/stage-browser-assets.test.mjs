@@ -11,6 +11,10 @@ function writeFile(filePath, contents) {
   fs.writeFileSync(filePath, contents, 'utf8');
 }
 
+const capacitorConfig = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), 'capacitor.config.json'), 'utf8'),
+);
+
 test('stageBrowserAssets copies demo plugins, demo player, and browser dist payload into capacitor public assets', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'axolync-android-stage-assets-'));
   const sourceRoot = path.join(tempRoot, 'browser-dist');
@@ -46,6 +50,8 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.equal(result.publicDir, publicDir);
   assert.equal(result.buildFlavor, 'debug');
   assert.equal(result.nativeServiceCompanionAssetsRoot, nativeServiceCompanionAssetsRoot);
+  assert.equal(result.capacitorConfig.rootPath, path.join(assetRoot, 'capacitor.config.json'));
+  assert.equal(result.capacitorConfig.nestedPath, path.join(assetRoot, 'capacitor', 'capacitor.config.json'));
   assert.deepEqual(result.capacitorPluginRegistry.entries, [
     {
       pkg: 'axolync-debug-archive-save',
@@ -69,7 +75,7 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
   assert.match(stagedDebugIndex, /BRIDGE_PUBLICATION = Object\.freeze/);
-  assert.match(stagedDebugIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\.\/native-bridge\.js'/);
+  assert.match(stagedDebugIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\/native-bridge\.js'/);
   assert.match(stagedDebugIndex, /publicationMode: 'capacitor-plugin-registry'/);
   assert.match(stagedDebugIndex, /pluginRegistryAssetPath: 'capacitor\.plugins\.json'/);
   assert.match(stagedDebugIndex, /mirroredPluginRegistryAssetPath: 'capacitor\/capacitor\.plugins\.json'/);
@@ -91,6 +97,7 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.match(stagedDebugIndex, /getDiagnostics/);
   assert.match(stagedDebugIndex, /clearPersistedRuntimeState/);
   assert.equal(fs.readFileSync(path.join(publicDir, 'assets', 'main.js'), 'utf8'), 'console.log("browser");');
+  assert.match(fs.readFileSync(path.join(publicDir, 'native-bridge.js'), 'utf8'), /nativePromise/);
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'assets', 'house_of_the_rising_sun_instrumental.ogg'), 'utf8'), 'ogg');
   assert.equal(fs.readFileSync(path.join(publicDir, 'demo', 'plugins', 'demo-lyricflow.js'), 'utf8'), 'self.onmessage = () => {};');
   assert.equal(
@@ -109,6 +116,14 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   );
   assert.equal(fs.readFileSync(path.join(publicDir, 'cordova.js'), 'utf8'), '');
   assert.equal(fs.readFileSync(path.join(publicDir, 'cordova_plugins.js'), 'utf8'), '');
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(assetRoot, 'capacitor.config.json'), 'utf8')),
+    capacitorConfig,
+  );
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(assetRoot, 'capacitor', 'capacitor.config.json'), 'utf8')),
+    capacitorConfig,
+  );
   assert.deepEqual(
     JSON.parse(fs.readFileSync(path.join(assetRoot, 'capacitor.plugins.json'), 'utf8')),
     result.capacitorPluginRegistry.entries,
@@ -151,6 +166,7 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
 
   assert.equal(result.buildFlavor, 'release');
   assert.equal(result.includeDemoAssets, false);
+  assert.equal(result.capacitorConfig.rootPath, path.join(assetRoot, 'capacitor.config.json'));
   const stagedReleaseIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_BUILD_FLAVOR = "release"/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_ENABLED = true/);
@@ -161,7 +177,8 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
   assert.match(stagedReleaseIndex, /hostPlatform: 'android'/);
-  assert.match(stagedReleaseIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\.\/native-bridge\.js'/);
+  assert.match(stagedReleaseIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\/native-bridge\.js'/);
+  assert.match(fs.readFileSync(path.join(publicDir, 'native-bridge.js'), 'utf8'), /nativePromise/);
   assert.match(stagedReleaseIndex, /window\.Capacitor\.nativePromise/);
   assert.match(stagedReleaseIndex, /ensureBridgeRuntimeLoaded = function\(\)/);
   assert.match(stagedReleaseIndex, /invoke\('getHostInfo', \{\}\)/);
@@ -169,6 +186,10 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.match(stagedReleaseIndex, /getDiagnostics/);
   assert.equal(fs.existsSync(path.join(publicDir, 'demo')), false);
   assert.equal(fs.existsSync(path.join(publicDir, 'native-service-companions')), false);
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(assetRoot, 'capacitor.config.json'), 'utf8')),
+    capacitorConfig,
+  );
   assert.deepEqual(
     JSON.parse(fs.readFileSync(path.join(assetRoot, 'capacitor.plugins.json'), 'utf8')),
     result.capacitorPluginRegistry.entries,

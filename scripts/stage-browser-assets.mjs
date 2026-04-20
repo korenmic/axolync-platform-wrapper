@@ -6,6 +6,18 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const assetsRoot = path.join(repoRoot, 'app', 'src', 'main', 'assets');
 const publicDir = path.join(repoRoot, 'app', 'src', 'main', 'assets', 'public');
 const capacitorAssetsDir = path.join(assetsRoot, 'capacitor');
+const capacitorConfigPath = path.join(repoRoot, 'capacitor.config.json');
+const capacitorNativeBridgeRuntimePath = path.join(
+  repoRoot,
+  'node_modules',
+  '@capacitor',
+  'android',
+  'capacitor',
+  'src',
+  'main',
+  'assets',
+  'native-bridge.js',
+);
 const CAPACITOR_PLUGIN_REGISTRY_FILENAME = 'capacitor.plugins.json';
 const CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY = Object.freeze([
   Object.freeze({
@@ -103,7 +115,7 @@ function buildNativeServiceCompanionHostSnippet() {
     "    packageName: 'axolync-native-bridge-host',",
     "    classpath: 'com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin',",
     '  });',
-    "  const BRIDGE_RUNTIME_SCRIPT_SRC = '../native-bridge.js';",
+    "  const BRIDGE_RUNTIME_SCRIPT_SRC = './native-bridge.js';",
     '  let bridgeRuntimeLoadPromise = null;',
     '  const buildBootstrapSnapshot = function() {',
     '    const capacitor = window.Capacitor || null;',
@@ -440,6 +452,24 @@ function writeCapacitorPluginRegistry(assetRoot) {
   };
 }
 
+function writeCapacitorConfig(assetRoot) {
+  if (!fs.existsSync(capacitorConfigPath)) {
+    throw new Error(`Capacitor config not found: ${capacitorConfigPath}`);
+  }
+  const configJson = `${fs.readFileSync(capacitorConfigPath, 'utf8').trim()}\n`;
+  for (const targetPath of [
+    path.join(assetRoot, 'capacitor.config.json'),
+    path.join(assetRoot, 'capacitor', 'capacitor.config.json'),
+  ]) {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, configJson, 'utf8');
+  }
+  return {
+    rootPath: path.join(assetRoot, 'capacitor.config.json'),
+    nestedPath: path.join(assetRoot, 'capacitor', 'capacitor.config.json'),
+  };
+}
+
 export function stageBrowserAssets(options = {}) {
   const sourceRoot = options.sourceRoot ?? resolveSourceRoot();
   const targetPublicDir = options.publicDir ?? publicDir;
@@ -455,6 +485,7 @@ export function stageBrowserAssets(options = {}) {
   const nativeServiceCompanionAssetsRoot = options.nativeServiceCompanionAssetsRoot ?? resolveNativeServiceCompanionAssetsRoot();
 
   ensureRequiredBrowserFiles(sourceRoot);
+  const capacitorConfig = writeCapacitorConfig(targetAssetRoot);
   const capacitorPluginRegistry = writeCapacitorPluginRegistry(targetAssetRoot);
 
   fs.rmSync(targetPublicDir, { recursive: true, force: true });
@@ -484,6 +515,14 @@ export function stageBrowserAssets(options = {}) {
   } else {
     fs.rmSync(nativeServiceCompanionTarget, { recursive: true, force: true });
   }
+
+  if (!fs.existsSync(capacitorNativeBridgeRuntimePath)) {
+    throw new Error(`Capacitor native bridge runtime not found: ${capacitorNativeBridgeRuntimePath}`);
+  }
+  fs.copyFileSync(
+    capacitorNativeBridgeRuntimePath,
+    path.join(targetPublicDir, 'native-bridge.js'),
+  );
 
   if (!includeDemoAssets) {
     fs.rmSync(path.join(targetPublicDir, 'demo'), { recursive: true, force: true });
@@ -538,6 +577,7 @@ export function stageBrowserAssets(options = {}) {
     buildFlavor,
     includeDemoAssets,
     nativeServiceCompanionAssetsRoot,
+    capacitorConfig,
     capacitorPluginRegistry,
     nativeStartupSplashVariant,
     nativeStartupSplashFitMode,

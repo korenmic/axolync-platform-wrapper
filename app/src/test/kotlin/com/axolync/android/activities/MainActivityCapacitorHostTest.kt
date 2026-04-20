@@ -65,10 +65,12 @@ class MainActivityCapacitorHostTest {
     fun `staged browser assets load the packaged Capacitor native bridge runtime before fallback failure`() {
         val source = repoFile("scripts/stage-browser-assets.mjs").readText()
         assertTrue(source.contains("BRIDGE_RUNTIME_SCRIPT_SRC"))
-        assertTrue(source.contains("../native-bridge.js"))
+        assertTrue(source.contains("./native-bridge.js"))
         assertTrue(source.contains("ensureBridgeRuntimeLoaded"))
         assertTrue(source.contains("data-axolync-capacitor-native-bridge-runtime"))
         assertTrue(source.contains("Failed to load packaged Capacitor native bridge runtime."))
+        assertTrue(source.contains("fs.copyFileSync("))
+        assertTrue(source.contains("native-bridge.js"))
     }
 
     @Test
