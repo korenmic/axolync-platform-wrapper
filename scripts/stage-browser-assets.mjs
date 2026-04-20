@@ -387,6 +387,14 @@ export function resolveSourceRoot(currentRepoRoot = repoRoot) {
   return path.resolve(currentRepoRoot, '..', 'axolync-browser', 'dist');
 }
 
+export function resolveDemoSourceRoot(currentRepoRoot = repoRoot) {
+  const builderDemo = process.env.AXOLYNC_BUILDER_BROWSER_DEMO?.trim();
+  if (builderDemo) {
+    return path.resolve(builderDemo);
+  }
+  return resolveSourceRoot(currentRepoRoot);
+}
+
 export function resolveDemoAssetsRoot(currentRepoRoot = repoRoot) {
   const builderDemo = process.env.AXOLYNC_BUILDER_BROWSER_DEMO?.trim();
   if (builderDemo) {
@@ -504,14 +512,14 @@ function writeCapacitorConfig(assetRoot) {
 }
 
 export function stageBrowserAssets(options = {}) {
-  const sourceRoot = options.sourceRoot ?? resolveSourceRoot();
+  const buildFlavor = options.buildFlavor ?? resolveAndroidBuildFlavor();
+  const includeDemoAssets = options.includeDemoAssets ?? resolveAndroidIncludeDemoAssets(buildFlavor);
+  const sourceRoot = options.sourceRoot ?? (includeDemoAssets ? resolveDemoSourceRoot() : resolveSourceRoot());
   const targetPublicDir = options.publicDir ?? publicDir;
   const targetAssetRoot = options.assetRoot ?? assetsRoot;
   const demoAssetsRoot = options.demoAssetsRoot ?? resolveDemoAssetsRoot();
   const demoPluginsRoot = options.demoPluginsRoot ?? resolveDemoPluginsRoot();
   const demoPlayerHtml = options.demoPlayerHtml ?? resolveDemoPlayerHtml();
-  const buildFlavor = options.buildFlavor ?? resolveAndroidBuildFlavor();
-  const includeDemoAssets = options.includeDemoAssets ?? resolveAndroidIncludeDemoAssets(buildFlavor);
   const nativeStartupSplashVariant = options.nativeStartupSplashVariant ?? resolveAndroidNativeStartupSplashVariant();
   const nativeStartupSplashFitMode = options.nativeStartupSplashFitMode ?? resolveAndroidNativeStartupSplashFitMode(nativeStartupSplashVariant);
   const nativeStartupSplashMinDurationMs = options.nativeStartupSplashMinDurationMs ?? resolveAndroidNativeStartupSplashMinDurationMs();

@@ -226,6 +226,63 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });
 
+test('stageBrowserAssets uses the published demo browser bundle as the base payload when demo assets are enabled', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'axolync-android-stage-assets-demo-root-'));
+  const normalSourceRoot = path.join(tempRoot, 'browser-normal');
+  const demoSourceRoot = path.join(tempRoot, 'browser-demo');
+  const assetRoot = path.join(tempRoot, 'assets-root');
+  const publicDir = path.join(tempRoot, 'public');
+  const previousNormal = process.env.AXOLYNC_BUILDER_BROWSER_NORMAL;
+  const previousDemo = process.env.AXOLYNC_BUILDER_BROWSER_DEMO;
+
+  writeFile(path.join(normalSourceRoot, 'index.html'), '<!doctype html><title>Normal Axolync</title>');
+  writeFile(path.join(normalSourceRoot, 'assets', 'main.js'), 'console.log("normal browser");');
+  writeFile(path.join(normalSourceRoot, 'plugins', 'preinstalled', 'manifest.json'), JSON.stringify({
+    plugins: [{ id: 'axolync-addon-vibra' }],
+  }));
+  writeFile(path.join(normalSourceRoot, 'themes', 'preinstalled', 'manifest.json'), JSON.stringify({
+    themes: [],
+  }));
+
+  writeFile(path.join(demoSourceRoot, 'index.html'), '<!doctype html><title>Demo Axolync</title>');
+  writeFile(path.join(demoSourceRoot, 'assets', 'main.js'), 'console.log("demo browser");');
+  writeFile(path.join(demoSourceRoot, 'plugins', 'preinstalled', 'manifest.json'), JSON.stringify({
+    plugins: [{ id: 'demo-stage1-addon' }],
+  }));
+  writeFile(path.join(demoSourceRoot, 'themes', 'preinstalled', 'manifest.json'), JSON.stringify({
+    themes: [],
+  }));
+
+  process.env.AXOLYNC_BUILDER_BROWSER_NORMAL = normalSourceRoot;
+  process.env.AXOLYNC_BUILDER_BROWSER_DEMO = demoSourceRoot;
+
+  try {
+    const result = stageBrowserAssets({
+      assetRoot,
+      publicDir,
+      buildFlavor: 'release',
+      includeDemoAssets: true,
+    });
+
+    assert.equal(result.sourceRoot, demoSourceRoot);
+    assert.equal(fs.readFileSync(path.join(publicDir, 'assets', 'main.js'), 'utf8'), 'console.log("demo browser");');
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(path.join(publicDir, 'plugins', 'preinstalled', 'manifest.json'), 'utf8')),
+      { plugins: [{ id: 'demo-stage1-addon' }] },
+    );
+    const stagedIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+    assert.match(stagedIndex, /Demo Axolync/);
+    assert.match(stagedIndex, /"demo-stage1-addon"/);
+    assert.doesNotMatch(stagedIndex, /"axolync-addon-vibra"/);
+  } finally {
+    if (previousNormal === undefined) delete process.env.AXOLYNC_BUILDER_BROWSER_NORMAL;
+    else process.env.AXOLYNC_BUILDER_BROWSER_NORMAL = previousNormal;
+    if (previousDemo === undefined) delete process.env.AXOLYNC_BUILDER_BROWSER_DEMO;
+    else process.env.AXOLYNC_BUILDER_BROWSER_DEMO = previousDemo;
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test('stageBrowserAssets infers cover fit mode when artwork splash is requested without an explicit fit override', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'axolync-android-stage-assets-artwork-'));
   const sourceRoot = path.join(tempRoot, 'browser-dist');
