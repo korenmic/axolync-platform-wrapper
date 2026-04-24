@@ -1,5 +1,6 @@
 package com.axolync.android.bridge
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.getcapacitor.JSObject
@@ -9,12 +10,15 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import fi.iki.elonen.NanoHTTPD
 import android.os.Build
+import org.brotli.dec.BrotliInputStream
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.FileNotFoundException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.UUID
 import kotlin.random.Random
 
@@ -46,6 +50,15 @@ private data class NativeBridgeOperatorGeo(
     val longitude: Double
 )
 
+private data class NativeBridgeOperatorDbConfig(
+    val compressedAssetPath: String,
+    val packagedAssetPath: String,
+    val packagedProvenancePath: String,
+    val deployedFileName: String,
+    val deployPolicy: String,
+    val sqliteHeaderRequired: Boolean
+)
+
 private data class NativeBridgeOperatorDescriptor(
     val runtimeOperatorKind: String,
     val listenPath: String,
@@ -54,7 +67,8 @@ private data class NativeBridgeOperatorDescriptor(
     val contentLanguage: String,
     val geo: NativeBridgeOperatorGeo,
     val userAgents: List<String>,
-    val timezones: List<String>
+    val timezones: List<String>,
+    val db: NativeBridgeOperatorDbConfig?
 )
 
 private data class NativeBridgeRegistration(
@@ -76,6 +90,15 @@ private data class NativeBridgeDiagnosticEntry(
     val details: Map<String, Any?>?
 )
 
+private data class LrclibDbDeploymentResult(
+    val dbFile: File,
+    val metadataFile: File,
+    val compressedAssetPath: String,
+    val compressedAssetSha256: String,
+    val reused: Boolean,
+    val replaced: Boolean
+)
+
 private interface NativeBridgeLoopbackServer {
     fun baseUrl(): String
     fun startServer()
@@ -83,6 +106,7 @@ private interface NativeBridgeLoopbackServer {
 }
 
 private class NativeBridgeRuntimeOperator(
+    private val context: Context,
     private val registration: NativeBridgeRegistration,
     private val logger: NativeBridgeDiagnosticLogger
 ) {
@@ -133,7 +157,7 @@ private class NativeBridgeRuntimeOperator(
         )
         return when (operatorKind) {
             OPERATOR_KIND_SHAZAM_DISCOVERY -> ShazamDiscoveryLoopbackServer(registration, registration.operator, logger)
-            OPERATOR_KIND_LRCLIB_LOCAL -> LrclibLocalLoopbackServer(registration, registration.operator, logger)
+            OPERATOR_KIND_LRCLIB_LOCAL -> LrclibLocalLoopbackServer(context, registration, registration.operator, logger)
             else -> {
                 logger(
                     "runtime-operator",
@@ -408,21 +432,28 @@ private class ShazamDiscoveryLoopbackServer(
 }
 
 private class LrclibLocalLoopbackServer(
+    private val context: Context,
     private val registration: NativeBridgeRegistration,
     private val descriptor: NativeBridgeOperatorDescriptor,
     private val logger: NativeBridgeDiagnosticLogger
 ) : NanoHTTPD("127.0.0.1", 0), NativeBridgeLoopbackServer {
+    private var deployment: LrclibDbDeploymentResult? = null
 
     override fun baseUrl(): String = "http://127.0.0.1:$listeningPort${descriptor.listenPath.ifEmpty { "/api" }}"
 
     override fun startServer() {
+        deployment = deployLrclibDbOnce()
         logger(
             "runtime-operator",
             "error",
             registration.addonId,
             registration.companionId,
             "runtime-operator.lrclib.start.not-ready",
-            mapOf("runtimeOperatorKind" to descriptor.runtimeOperatorKind)
+            mapOf(
+                "runtimeOperatorKind" to descriptor.runtimeOperatorKind,
+                "dbDeployed" to (deployment?.dbFile?.absolutePath ?: ""),
+                "dbReused" to (deployment?.reused ?: false)
+            )
         )
         throw UnsupportedOperationException("Android LRCLIB native loopback support is registered but not fully implemented yet.")
     }
@@ -430,7 +461,121 @@ private class LrclibLocalLoopbackServer(
     override fun stopServer() {
         stop()
     }
+
+    private fun deployLrclibDbOnce(): LrclibDbDeploymentResult {
+        val dbConfig = descriptor.db
+            ?: throw IllegalStateException("LRCLIB native operator descriptor is missing db deployment config.")
+        if (dbConfig.deployPolicy.isNotBlank() && dbConfig.deployPolicy != "once-per-compressed-sha256") {
+            throw IllegalStateException("Unsupported LRCLIB DB deploy policy: ${dbConfig.deployPolicy}")
+        }
+        val packagedAssetPath = packagedNativeAssetPath(registration.entrypoint, dbConfig.packagedAssetPath.ifEmpty { dbConfig.compressedAssetPath })
+        val compressedSha256 = sha256Asset(context, packagedAssetPath)
+        val deployedFileName = dbConfig.deployedFileName.ifEmpty { "db.sqlite3" }
+        val deployDir = File(
+            context.filesDir,
+            listOf(
+                "axolync",
+                "native-service-companions",
+                safeFileToken(registration.addonId),
+                safeFileToken(registration.companionId),
+                safeFileToken(descriptor.runtimeOperatorKind),
+                compressedSha256
+            ).joinToString(File.separator)
+        )
+        val dbFile = File(deployDir, deployedFileName)
+        val metadataFile = File(deployDir, "deployment.json")
+        val metadata = readJsonObject(metadataFile)
+        if (
+            dbFile.isFile
+            && metadata?.optString("compressedAssetSha256") == compressedSha256
+            && (!dbConfig.sqliteHeaderRequired || hasSqliteHeader(dbFile))
+        ) {
+            logger(
+                "runtime-operator",
+                "info",
+                registration.addonId,
+                registration.companionId,
+                "lrclib.db.deploy.reused",
+                mapOf("assetPath" to packagedAssetPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath)
+            )
+            return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAssetPath, compressedSha256, reused = true, replaced = false)
+        }
+
+        val replaced = deployDir.exists()
+        deployDir.deleteRecursively()
+        deployDir.mkdirs()
+        BrotliInputStream(context.assets.open(packagedAssetPath)).use { input ->
+            dbFile.outputStream().use { output -> input.copyTo(output) }
+        }
+        if (dbConfig.sqliteHeaderRequired && !hasSqliteHeader(dbFile)) {
+            dbFile.delete()
+            throw IllegalStateException("Deployed LRCLIB DB does not have a SQLite header.")
+        }
+        metadataFile.writeText(
+            JSONObject()
+                .put("compressedAssetPath", packagedAssetPath)
+                .put("compressedAssetSha256", compressedSha256)
+                .put("deployedDbPath", dbFile.absolutePath)
+                .put("deployedAtMs", System.currentTimeMillis())
+                .toString(),
+            StandardCharsets.UTF_8
+        )
+        logger(
+            "runtime-operator",
+            "info",
+            registration.addonId,
+            registration.companionId,
+            "lrclib.db.deploy.completed",
+            mapOf("assetPath" to packagedAssetPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath, "replaced" to replaced)
+        )
+        return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAssetPath, compressedSha256, reused = false, replaced = replaced)
+    }
 }
+
+private fun packagedNativeAssetPath(entrypoint: String, packagedAssetPath: String): String {
+    val entrypointDir = normalizeAssetPath(entrypoint).substringBeforeLast("/", "")
+    val normalizedPackagedAssetPath = normalizeAssetPath(packagedAssetPath)
+    return listOf("public", "native-service-companions", entrypointDir, normalizedPackagedAssetPath)
+        .filter { it.isNotBlank() }
+        .joinToString("/")
+}
+
+private fun normalizeAssetPath(value: String): String =
+    value.trim().replace('\\', '/').trimStart('/')
+
+private fun sha256Asset(context: Context, assetPath: String): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    context.assets.open(assetPath).use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = input.read(buffer)
+            if (read <= 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+private fun hasSqliteHeader(file: File): Boolean {
+    if (!file.isFile || file.length() < 16) return false
+    val header = ByteArray(16)
+    file.inputStream().use { input ->
+        if (input.read(header) != header.size) return false
+    }
+    return String(header, StandardCharsets.US_ASCII) == "SQLite format 3\u0000"
+}
+
+private fun readJsonObject(file: File): JSONObject? {
+    if (!file.isFile) return null
+    return try {
+        JSONObject(file.readText(StandardCharsets.UTF_8))
+    } catch (_: Throwable) {
+        null
+    }
+}
+
+private fun safeFileToken(value: String): String =
+    value.trim().replace(Regex("[^A-Za-z0-9._-]+"), "_").ifEmpty { "unknown" }
 
 private fun normalizeHostAbi(rawAbi: String?): String? {
     return when (rawAbi?.trim()?.lowercase()) {
@@ -558,7 +703,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         )
         try {
             val runtime = runtimeOperators.getOrPut(key) {
-                NativeBridgeRuntimeOperator(registration, ::appendDiagnostic)
+                NativeBridgeRuntimeOperator(context, registration, ::appendDiagnostic)
             }
             runtime.start()
             lastErrorState.remove(key)
@@ -946,6 +1091,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
     private fun parseOperatorDescriptor(parsed: JSONObject): NativeBridgeOperatorDescriptor {
         val geo = parsed.optJSONObject("geo") ?: JSONObject()
+        val db = parsed.optJSONObject("db")
         return NativeBridgeOperatorDescriptor(
             runtimeOperatorKind = parsed.optString("runtime_operator_kind").trim(),
             listenPath = parsed.optString("listen_path").trim(),
@@ -958,7 +1104,17 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                 longitude = geo.optDouble("longitude", 0.0)
             ),
             userAgents = parsed.optJSONArray("user_agents").toStringList(),
-            timezones = parsed.optJSONArray("timezones").toStringList()
+            timezones = parsed.optJSONArray("timezones").toStringList(),
+            db = db?.let {
+                NativeBridgeOperatorDbConfig(
+                    compressedAssetPath = it.optString("compressedAssetPath").trim(),
+                    packagedAssetPath = it.optString("packagedAssetPath").trim(),
+                    packagedProvenancePath = it.optString("packagedProvenancePath").trim(),
+                    deployedFileName = it.optString("deployedFileName").trim(),
+                    deployPolicy = it.optString("deployPolicy").trim(),
+                    sqliteHeaderRequired = it.optBoolean("sqliteHeaderRequired", true)
+                )
+            }
         )
     }
 

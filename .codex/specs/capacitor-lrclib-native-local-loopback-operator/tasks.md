@@ -5,7 +5,7 @@
   - Preserve existing Vibra/Shazam behavior unchanged.
   - Return explicit unsupported diagnostics for unknown operator kinds.
 
-- [ ] 2. Implement app-private LRCLIB DB deployment.
+- [x] 2. Implement app-private LRCLIB DB deployment.
   - Locate packaged `db.sqlite3.br` assets from the installed native payload.
   - Compute compressed asset hash and deploy to app-private versioned native companion storage.
   - Reuse valid deployed DBs for matching hashes.

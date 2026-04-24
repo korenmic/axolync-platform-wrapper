@@ -78,7 +78,13 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("runtime-operator.dispatch.selected"))
         assertTrue(source.contains("runtime-operator.dispatch.unsupported"))
         assertTrue(source.contains("ShazamDiscoveryLoopbackServer(registration, registration.operator, logger)"))
-        assertTrue(source.contains("LrclibLocalLoopbackServer(registration, registration.operator, logger)"))
+        assertTrue(source.contains("LrclibLocalLoopbackServer(context, registration, registration.operator, logger)"))
+        assertTrue(source.contains("NativeBridgeOperatorDbConfig"))
+        assertTrue(source.contains("BrotliInputStream"))
+        assertTrue(source.contains("deployLrclibDbOnce"))
+        assertTrue(source.contains("lrclib.db.deploy.reused"))
+        assertTrue(source.contains("lrclib.db.deploy.completed"))
+        assertTrue(source.contains("once-per-compressed-sha256"))
         assertTrue(source.contains("baseUrl(): String = \"http://127.0.0.1:\$listeningPort\${descriptor.listenPath}\""))
         assertTrue(source.contains("loopback-route-miss"))
         assertTrue(source.contains("upstream-html-response"))
@@ -86,6 +92,12 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("runtime-operator-crash"))
         assertFalse(source.contains("vibra"))
         assertFalse(source.contains("No native service companion is registered on this Capacitor host."))
+    }
+
+    @Test
+    fun `native service companion plugin declares Brotli support for LRCLIB DB deployment`() {
+        val buildGradle = repoFile("app/build.gradle.kts").readText()
+        assertTrue(buildGradle.contains("org.brotli:dec"))
     }
 
     @Test
