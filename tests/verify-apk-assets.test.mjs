@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   assertDemoAssetState,
   assertLrclibNativeAssetState,
+  resolveExpectedLrclibNativeAssetState,
 } from '../scripts/verify-apk-assets.mjs';
 
 test('assertDemoAssetState accepts the full debug demo payload', () => {
@@ -58,4 +59,25 @@ test('assertLrclibNativeAssetState rejects partial or remote-only LRCLIB native 
   assert.throws(() => {
     assertLrclibNativeAssetState(partialZipEntries, false, '/tmp/axolync.apk');
   }, /unexpectedly ships LRCLIB native companion assets/);
+});
+
+test('resolveExpectedLrclibNativeAssetState lets builder declare native payload expectations for canonical Gradle output names', () => {
+  const previous = process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS;
+  try {
+    process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS = '1';
+    assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/app-normal-release.apk'), true);
+
+    process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS = '0';
+    assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/lrclib-native/app-normal-release.apk'), false);
+
+    delete process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS;
+    assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/lrclib-native/app-normal-release.apk'), true);
+    assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/app-normal-release.apk'), false);
+  } finally {
+    if (previous === undefined) {
+      delete process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS;
+    } else {
+      process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS = previous;
+    }
+  }
 });

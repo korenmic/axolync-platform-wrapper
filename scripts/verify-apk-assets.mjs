@@ -122,6 +122,14 @@ function detectExpectedArtifactFlavor(apkPath) {
   return normalized.includes('/demo/') || path.basename(normalized).includes('-demo-') ? 'demo' : 'normal';
 }
 
+export function resolveExpectedLrclibNativeAssetState(apkPath) {
+  const envOverride = String(process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS ?? '').trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(envOverride)) return true;
+  if (['0', 'false', 'no', 'off'].includes(envOverride)) return false;
+  const resolved = path.resolve(apkPath).replaceAll('\\', '/').toLowerCase();
+  return path.basename(resolved).includes('lrclib-native') || resolved.includes('/lrclib-native/');
+}
+
 export function assertDemoAssetState(zipEntries, shouldIncludeDemoAssets, resolved) {
   const hasAnyDemoTreeEntry = zipEntries.some((entry) => entry.startsWith('assets/public/demo/'));
   for (const expectedEntry of DEBUG_DEMO_ENTRIES) {
@@ -159,8 +167,7 @@ function verifyApk(apkPath) {
   const expectedBuildFlavor = detectExpectedBuildFlavor(resolved);
   const expectedArtifactFlavor = detectExpectedArtifactFlavor(resolved);
   const shouldIncludeDemoAssets = expectedArtifactFlavor === 'demo' || expectedBuildFlavor === 'debug';
-  const shouldIncludeLrclibNative = path.basename(resolved).toLowerCase().includes('lrclib-native')
-    || resolved.replaceAll('\\', '/').toLowerCase().includes('/lrclib-native/');
+  const shouldIncludeLrclibNative = resolveExpectedLrclibNativeAssetState(resolved);
   const indexHtml = readZipEntry(resolved, 'assets/public/index.html');
   const syncWorker = readZipEntry(resolved, 'assets/public/workers/syncengineBridgeWorker.js');
   const lyricWorker = readZipEntry(resolved, 'assets/public/workers/lyricflowBridgeWorker.js');
