@@ -35,3 +35,22 @@ The validation run currently tracks:
 - Device profile metadata for reproducibility
 
 If no device is connected, the script writes a `SKIPPED` report entry with reason `no_adb_device_connected`.
+
+## LRCLIB Native Loopback Proof Limit
+
+The Capacitor LRCLIB native implementation is currently non-device proven only. Unit and staging tests can prove descriptor dispatch, packaged asset presence, Brotli DB deployment code paths, SQLite query code paths, loopback route code paths, and APK asset guardrails, but they do not prove a real Android WebView can fetch the bound loopback server on a physical device.
+
+Do not mark the Android LRCLIB native path device-proven until a debug archive from a real APK run contains all of these events for `axolync-addon-lrclib` / `lrclib_local`:
+
+- `host.registration.loaded` with `runtimeOperatorKind=lrclib-local-loopback-v1`
+- `runtime-operator.dispatch.selected`
+- `lrclib.db.asset.resolved`
+- `lrclib.db.deploy.completed` or `lrclib.db.deploy.reused`
+- `runtime-operator.lrclib.loopback.bound`
+- `companion.connection.resolved`
+- `lrclib.loopback.request.received`
+- `lrclib.sqlite.open.completed`
+- `lrclib.sqlite.query.completed`
+- `lrclib.loopback.request.completed`
+
+The first manual proof should install an LRCLIB-native APK variant, enable LRCLIB native mode, request a known local-subset lyric, export the debug archive, and verify the local-result classification is `local-hit`, `plain-only`, or truthful `subset-miss` without Android claiming native success while returning wrapper HTML or unrelated Shazam/Vibra responses.

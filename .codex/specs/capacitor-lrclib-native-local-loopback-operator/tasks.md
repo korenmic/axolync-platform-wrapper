@@ -35,6 +35,6 @@
   - Test loopback route behavior where JVM-compatible.
   - Add package/APK validation for LRCLIB native assets and registry entries.
 
-- [ ] 7. Document final Android proof limits.
+- [x] 7. Document final Android proof limits.
   - State that first implementation is best-effort without approved emulator/device automation.
   - Add expected manual/device proof steps and required diagnostics for the first native-capable Android artifact trial.
