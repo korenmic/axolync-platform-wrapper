@@ -55,7 +55,11 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("Build.SUPPORTED_ABIS"))
         assertTrue(source.contains("Native bridge is unavailable in this bundle for the current host."))
         assertTrue(source.contains("public/native-service-companions/manifest.json"))
-        assertTrue(source.contains("fun baseUrl(): String = \"http://localhost:\$listeningPort\${descriptor.listenPath}\""))
+        assertTrue(source.contains("fun baseUrl(): String = \"http://127.0.0.1:\$listeningPort\${descriptor.listenPath}\""))
+        assertTrue(source.contains("loopback-route-miss"))
+        assertTrue(source.contains("upstream-html-response"))
+        assertTrue(source.contains("upstream-json-parse-failure"))
+        assertTrue(source.contains("runtime-operator-crash"))
         assertFalse(source.contains("vibra"))
         assertFalse(source.contains("No native service companion is registered on this Capacitor host."))
     }
@@ -100,6 +104,7 @@ class MainActivityCapacitorHostTest {
     fun `network security config allows localhost cleartext without broad cleartext enablement`() {
         val xml = repoFile("app/src/main/res/xml/network_security_config.xml").readText()
         assertTrue(xml.contains("<domain includeSubdomains=\"false\">localhost</domain>"))
+        assertTrue(xml.contains("<domain includeSubdomains=\"false\">127.0.0.1</domain>"))
         assertTrue(xml.contains("<base-config cleartextTrafficPermitted=\"false\" />"))
     }
 

@@ -156,7 +156,7 @@ private class ShazamDiscoveryLoopbackServer(
     private val logger: NativeBridgeDiagnosticLogger
 ) : NanoHTTPD("127.0.0.1", 0) {
 
-    fun baseUrl(): String = "http://localhost:$listeningPort${descriptor.listenPath}"
+    fun baseUrl(): String = "http://127.0.0.1:$listeningPort${descriptor.listenPath}"
 
     override fun serve(session: IHTTPSession): Response {
         logger(
@@ -180,11 +180,18 @@ private class ShazamDiscoveryLoopbackServer(
                 registration.addonId,
                 registration.companionId,
                 "runtime-operator.loopback.request.unknown-path",
-                mapOf("path" to session.uri)
+                mapOf(
+                    "path" to session.uri,
+                    "classification" to "loopback-route-miss"
+                )
             )
             return jsonResponse(
                 Response.Status.NOT_FOUND,
-                JSONObject().put("error", "Unknown runtime operator path.").toString()
+                JSONObject()
+                    .put("ok", false)
+                    .put("error", "Unknown runtime operator path.")
+                    .put("classification", "loopback-route-miss")
+                    .toString()
             )
         }
         val uri = session.parameters["uri"]?.firstOrNull()
@@ -198,16 +205,45 @@ private class ShazamDiscoveryLoopbackServer(
                 "runtime-operator.loopback.request.missing-query",
                 mapOf(
                     "hasUri" to (!uri.isNullOrBlank()),
-                    "hasSampleMs" to (!sampleMs.isNullOrBlank())
+                    "hasSampleMs" to (!sampleMs.isNullOrBlank()),
+                    "classification" to "missing-query"
                 )
             )
             return jsonResponse(
                 Response.Status.BAD_REQUEST,
-                JSONObject().put("error", "Missing required query parameters: uri and samplems").toString()
+                JSONObject()
+                    .put("ok", false)
+                    .put("error", "Missing required query parameters: uri and samplems")
+                    .put("classification", "missing-query")
+                    .toString()
             )
         }
         return try {
             val responseBody = proxyShazamDiscoveryRequest(uri, sampleMs)
+            val contractFailure = classifyProxyResponseBody(responseBody)
+            if (contractFailure != null) {
+                logger(
+                    "runtime-operator",
+                    "error",
+                    registration.addonId,
+                    registration.companionId,
+                    "runtime-operator.loopback.response-contract.failed",
+                    mapOf(
+                        "sampleMs" to sampleMs,
+                        "classification" to contractFailure,
+                        "bodyPrefix" to bodyPrefix(responseBody)
+                    )
+                )
+                return jsonResponse(
+                    Response.Status.INTERNAL_ERROR,
+                    JSONObject()
+                        .put("ok", false)
+                        .put("error", "Shazam upstream response violated the JSON response contract.")
+                        .put("classification", contractFailure)
+                        .put("bodyPrefix", bodyPrefix(responseBody))
+                        .toString()
+                )
+            }
             logger(
                 "runtime-operator",
                 "info",
@@ -226,13 +262,16 @@ private class ShazamDiscoveryLoopbackServer(
                 "runtime-operator.loopback.request.failed",
                 mapOf(
                     "sampleMs" to sampleMs,
-                    "error" to (error.message ?: error.toString())
+                    "error" to (error.message ?: error.toString()),
+                    "classification" to "runtime-operator-crash"
                 )
             )
             jsonResponse(
                 Response.Status.INTERNAL_ERROR,
                 JSONObject()
+                    .put("ok", false)
                     .put("error", "Failed to make request to Shazam API")
+                    .put("classification", "runtime-operator-crash")
                     .put("details", error.message ?: error.toString())
                     .toString()
             )
@@ -281,6 +320,27 @@ private class ShazamDiscoveryLoopbackServer(
             ?.ifBlank { "{}" }
             ?: "{}"
     }
+
+    private fun classifyProxyResponseBody(body: String): String? {
+        val trimmed = body.trimStart()
+        val lowered = trimmed.lowercase()
+        if (lowered.startsWith("<!doctype") || lowered.startsWith("<html") || lowered.contains("<body")) {
+            return "upstream-html-response"
+        }
+        return try {
+            if (trimmed.startsWith("[")) {
+                JSONArray(trimmed)
+            } else {
+                JSONObject(trimmed)
+            }
+            null
+        } catch (_: Throwable) {
+            "upstream-json-parse-failure"
+        }
+    }
+
+    private fun bodyPrefix(body: String): String =
+        body.replace(Regex("\\s+"), " ").trim().take(160)
 
     private fun buildUpstreamUrl(template: String): String {
         var result = template
