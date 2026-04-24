@@ -11,7 +11,7 @@
   - Reuse valid deployed DBs for matching hashes.
   - Replace missing, stale, corrupt, or hash-mismatched deployments.
 
-- [ ] 3. Add Kotlin SQLite query support for LRCLIB routes.
+- [x] 3. Add Kotlin SQLite query support for LRCLIB routes.
   - Open deployed SQLite DB safely and read-only where possible.
   - Implement `/api/get` parameter handling and compatible JSON response behavior.
   - Implement `/api/search` parameter handling and compatible JSON response behavior.

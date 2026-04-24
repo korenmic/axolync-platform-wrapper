@@ -1,6 +1,8 @@
 package com.axolync.android.bridge
 
 import android.content.Context
+import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.util.Log
 import com.getcapacitor.JSObject
@@ -9,6 +11,7 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import fi.iki.elonen.NanoHTTPD
+import fi.iki.elonen.NanoHTTPD.Response
 import android.os.Build
 import org.brotli.dec.BrotliInputStream
 import org.json.JSONArray
@@ -97,6 +100,12 @@ private data class LrclibDbDeploymentResult(
     val compressedAssetSha256: String,
     val reused: Boolean,
     val replaced: Boolean
+)
+
+private data class LrclibQueryResponse(
+    val status: Response.Status,
+    val body: String,
+    val classification: String
 )
 
 private interface NativeBridgeLoopbackServer {
@@ -438,11 +447,17 @@ private class LrclibLocalLoopbackServer(
     private val logger: NativeBridgeDiagnosticLogger
 ) : NanoHTTPD("127.0.0.1", 0), NativeBridgeLoopbackServer {
     private var deployment: LrclibDbDeploymentResult? = null
+    private var queryEngine: LrclibNativeQueryEngine? = null
 
     override fun baseUrl(): String = "http://127.0.0.1:$listeningPort${descriptor.listenPath.ifEmpty { "/api" }}"
 
     override fun startServer() {
         deployment = deployLrclibDbOnce()
+        queryEngine = LrclibNativeQueryEngine(
+            dbFile = deployment!!.dbFile,
+            registration = registration,
+            logger = logger
+        )
         logger(
             "runtime-operator",
             "error",
@@ -530,6 +545,225 @@ private class LrclibLocalLoopbackServer(
         )
         return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAssetPath, compressedSha256, reused = false, replaced = replaced)
     }
+}
+
+private class LrclibNativeQueryEngine(
+    private val dbFile: File,
+    private val registration: NativeBridgeRegistration,
+    private val logger: NativeBridgeDiagnosticLogger
+) {
+    fun handleGet(parameters: Map<String, List<String>>): LrclibQueryResponse {
+        val trackName = firstParameter(parameters, "track_name")
+        val artistName = firstParameter(parameters, "artist_name")
+        val albumName = firstParameter(parameters, "album_name")
+        val duration = firstParameter(parameters, "duration")?.toDoubleOrNull()
+        if (trackName.isNullOrBlank()) {
+            return errorResponse(Response.Status.BAD_REQUEST, "missing-query", "Missing required query parameter: track_name")
+        }
+        return try {
+            val record = querySingle(trackName, artistName, albumName, duration)
+            if (record == null) {
+                notFoundResponse("subset-miss")
+            } else {
+                recordResponse(record)
+            }
+        } catch (error: Throwable) {
+            logger(
+                "runtime-operator",
+                "error",
+                registration.addonId,
+                registration.companionId,
+                "lrclib.sqlite.query.failed",
+                mapOf("route" to "/api/get", "error" to (error.message ?: error.toString()))
+            )
+            errorResponse(Response.Status.INTERNAL_ERROR, "sqlite-query-failure", error.message ?: error.toString())
+        }
+    }
+
+    fun handleSearch(parameters: Map<String, List<String>>): LrclibQueryResponse {
+        val q = firstParameter(parameters, "q")
+        val trackName = firstParameter(parameters, "track_name")
+        val artistName = firstParameter(parameters, "artist_name")
+        val albumName = firstParameter(parameters, "album_name")
+        if (q.isNullOrBlank() && trackName.isNullOrBlank() && artistName.isNullOrBlank() && albumName.isNullOrBlank()) {
+            return errorResponse(Response.Status.BAD_REQUEST, "missing-query", "Missing at least one search query parameter.")
+        }
+        return try {
+            val records = querySearch(q, trackName, artistName, albumName)
+            if (records.isEmpty()) {
+                LrclibQueryResponse(Response.Status.OK, JSONArray().toString(), "subset-miss")
+            } else {
+                val classification = classifyRecord(records.first())
+                LrclibQueryResponse(
+                    Response.Status.OK,
+                    JSONArray().apply { records.forEach { put(it) } }.toString(),
+                    classification
+                )
+            }
+        } catch (error: Throwable) {
+            logger(
+                "runtime-operator",
+                "error",
+                registration.addonId,
+                registration.companionId,
+                "lrclib.sqlite.query.failed",
+                mapOf("route" to "/api/search", "error" to (error.message ?: error.toString()))
+            )
+            errorResponse(Response.Status.INTERNAL_ERROR, "sqlite-query-failure", error.message ?: error.toString())
+        }
+    }
+
+    private fun querySingle(trackName: String, artistName: String?, albumName: String?, duration: Double?): JSONObject? {
+        val clauses = mutableListOf("t.name_lower = ?")
+        val args = mutableListOf(normalizeQueryText(trackName))
+        if (!artistName.isNullOrBlank()) {
+            clauses += "t.artist_name_lower = ?"
+            args += normalizeQueryText(artistName)
+        }
+        if (!albumName.isNullOrBlank()) {
+            clauses += "t.album_name_lower = ?"
+            args += normalizeQueryText(albumName)
+        }
+        val durationOrder = if (duration != null) "ABS(t.duration - ?) ASC," else ""
+        if (duration != null) {
+            args += duration.toString()
+        }
+        val sql = """
+            SELECT t.id AS track_id, t.name, t.artist_name, t.album_name, t.duration,
+                   l.id AS lyric_id, l.plain_lyrics, l.synced_lyrics, l.instrumental
+            FROM tracks t
+            LEFT JOIN lyrics l ON l.track_id = t.id
+            WHERE ${clauses.joinToString(" AND ")}
+            ORDER BY $durationOrder CASE WHEN l.id = t.last_lyrics_id THEN 0 ELSE 1 END, l.id ASC
+            LIMIT 1
+        """.trimIndent()
+        return queryJsonRows(sql, args.toTypedArray(), 1).firstOrNull()
+    }
+
+    private fun querySearch(q: String?, trackName: String?, artistName: String?, albumName: String?): List<JSONObject> {
+        val clauses = mutableListOf<String>()
+        val args = mutableListOf<String>()
+        if (!q.isNullOrBlank()) {
+            clauses += "(t.name_lower LIKE ? OR t.artist_name_lower LIKE ? OR t.album_name_lower LIKE ?)"
+            val like = "%${normalizeQueryText(q)}%"
+            args += like
+            args += like
+            args += like
+        }
+        if (!trackName.isNullOrBlank()) {
+            clauses += "t.name_lower LIKE ?"
+            args += "%${normalizeQueryText(trackName)}%"
+        }
+        if (!artistName.isNullOrBlank()) {
+            clauses += "t.artist_name_lower LIKE ?"
+            args += "%${normalizeQueryText(artistName)}%"
+        }
+        if (!albumName.isNullOrBlank()) {
+            clauses += "t.album_name_lower LIKE ?"
+            args += "%${normalizeQueryText(albumName)}%"
+        }
+        val where = if (clauses.isEmpty()) "1 = 1" else clauses.joinToString(" AND ")
+        val sql = """
+            SELECT t.id AS track_id, t.name, t.artist_name, t.album_name, t.duration,
+                   l.id AS lyric_id, l.plain_lyrics, l.synced_lyrics, l.instrumental
+            FROM tracks t
+            LEFT JOIN lyrics l ON l.track_id = t.id
+            WHERE $where
+            ORDER BY CASE WHEN l.id = t.last_lyrics_id THEN 0 ELSE 1 END, t.name ASC, t.artist_name ASC
+            LIMIT 10
+        """.trimIndent()
+        return queryJsonRows(sql, args.toTypedArray(), 10)
+    }
+
+    private fun queryJsonRows(sql: String, args: Array<String>, limit: Int): List<JSONObject> {
+        val db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
+        return try {
+            db.rawQuery(sql, args).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext() && size < limit) {
+                        add(cursorToLrclibRecord(cursor))
+                    }
+                }
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    private fun cursorToLrclibRecord(cursor: Cursor): JSONObject =
+        JSONObject()
+            .put("id", cursor.getLongByName("track_id"))
+            .put("trackName", cursor.getStringOrNullByName("name"))
+            .put("name", cursor.getStringOrNullByName("name"))
+            .put("artistName", cursor.getStringOrNullByName("artist_name"))
+            .put("albumName", cursor.getStringOrNullByName("album_name"))
+            .put("duration", cursor.getDoubleByName("duration"))
+            .put("instrumental", cursor.getIntByName("instrumental") == 1)
+            .putNullable("plainLyrics", cursor.getStringOrNullByName("plain_lyrics"))
+            .putNullable("syncedLyrics", cursor.getStringOrNullByName("synced_lyrics"))
+
+    private fun recordResponse(record: JSONObject): LrclibQueryResponse =
+        LrclibQueryResponse(Response.Status.OK, record.toString(), classifyRecord(record))
+
+    private fun notFoundResponse(classification: String): LrclibQueryResponse =
+        LrclibQueryResponse(
+            Response.Status.NOT_FOUND,
+            JSONObject()
+                .put("ok", false)
+                .put("classification", classification)
+                .put("error", "LRCLIB local subset has no matching lyrics.")
+                .toString(),
+            classification
+        )
+
+    private fun errorResponse(status: Response.Status, classification: String, message: String): LrclibQueryResponse =
+        LrclibQueryResponse(
+            status,
+            JSONObject()
+                .put("ok", false)
+                .put("classification", classification)
+                .put("error", message)
+                .toString(),
+            classification
+        )
+}
+
+private fun firstParameter(parameters: Map<String, List<String>>, name: String): String? =
+    parameters[name]?.firstOrNull()?.trim()
+
+private fun normalizeQueryText(value: String): String =
+    value.trim().lowercase()
+
+private fun classifyRecord(record: JSONObject): String {
+    val syncedLyrics = record.optString("syncedLyrics", "").trim()
+    val plainLyrics = record.optString("plainLyrics", "").trim()
+    return when {
+        syncedLyrics.isNotEmpty() -> "local-hit"
+        plainLyrics.isNotEmpty() -> "plain-only"
+        else -> "subset-miss"
+    }
+}
+
+private fun JSONObject.putNullable(name: String, value: String?): JSONObject =
+    put(name, value ?: JSONObject.NULL)
+
+private fun Cursor.getColumnIndexOrThrowCompat(name: String): Int =
+    getColumnIndex(name).takeIf { it >= 0 } ?: throw IllegalStateException("Missing SQLite column \"$name\".")
+
+private fun Cursor.getStringOrNullByName(name: String): String? {
+    val index = getColumnIndexOrThrowCompat(name)
+    return if (isNull(index)) null else getString(index)
+}
+
+private fun Cursor.getLongByName(name: String): Long =
+    getLong(getColumnIndexOrThrowCompat(name))
+
+private fun Cursor.getDoubleByName(name: String): Double =
+    getDouble(getColumnIndexOrThrowCompat(name))
+
+private fun Cursor.getIntByName(name: String): Int {
+    val index = getColumnIndexOrThrowCompat(name)
+    return if (isNull(index)) 0 else getInt(index)
 }
 
 private fun packagedNativeAssetPath(entrypoint: String, packagedAssetPath: String): String {
