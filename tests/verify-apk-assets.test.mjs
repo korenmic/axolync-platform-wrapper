@@ -5,6 +5,7 @@ import {
   assertDemoAssetState,
   assertLrclibNativeAssetState,
   resolveExpectedLrclibNativeAssetState,
+  resolveExpectedNotificationCaptureState,
 } from '../scripts/verify-apk-assets.mjs';
 
 test('assertDemoAssetState accepts the full debug demo payload', () => {
@@ -78,6 +79,32 @@ test('resolveExpectedLrclibNativeAssetState lets builder declare native payload 
       delete process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS;
     } else {
       process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS = previous;
+    }
+  }
+});
+
+test('resolveExpectedNotificationCaptureState keeps notification capture disabled unless explicitly enabled', () => {
+  const previous = process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED;
+  try {
+    delete process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED;
+    assert.equal(resolveExpectedNotificationCaptureState(), false);
+
+    process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = '1';
+    assert.equal(resolveExpectedNotificationCaptureState(), true);
+
+    process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = 'true';
+    assert.equal(resolveExpectedNotificationCaptureState(), true);
+
+    process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = '0';
+    assert.equal(resolveExpectedNotificationCaptureState(), false);
+
+    process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = 'false';
+    assert.equal(resolveExpectedNotificationCaptureState(), false);
+  } finally {
+    if (previous === undefined) {
+      delete process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED;
+    } else {
+      process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = previous;
     }
   }
 });

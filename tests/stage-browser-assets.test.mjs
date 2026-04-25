@@ -102,8 +102,11 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.equal(result.nativeStartupSplashVariant, 'layered');
   assert.equal(result.nativeStartupSplashFitMode, 'contain');
   assert.equal(result.nativeStartupSplashMinDurationMs, 2200);
+  assert.equal(result.notificationCaptureEnabled, false);
   const stagedDebugIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_BUILD_FLAVOR = "debug"/);
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_NOTIFICATION_CAPTURE_ENABLED = false/);
+  assert.match(stagedDebugIndex, /window\.__AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = false/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_PREINSTALLED_ADDON_MANIFEST_FALLBACK__/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_PREINSTALLED_THEME_MANIFEST_FALLBACK__/);
   assert.match(stagedDebugIndex, /"axolync-addon-vibra"/);
@@ -224,6 +227,8 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.equal(result.capacitorConfig.rootPath, path.join(assetRoot, 'capacitor.config.json'));
   const stagedReleaseIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_BUILD_FLAVOR = "release"/);
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NOTIFICATION_CAPTURE_ENABLED = false/);
+  assert.match(stagedReleaseIndex, /window\.__AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = false/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_PREINSTALLED_ADDON_MANIFEST_FALLBACK__ = \{\"plugins\":\[\]\}/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_PREINSTALLED_THEME_MANIFEST_FALLBACK__ = \{\"themes\":\[\]\}/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_STARTUP_SPLASH_ENABLED = true/);
@@ -251,6 +256,29 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
     JSON.parse(fs.readFileSync(path.join(assetRoot, 'capacitor.plugins.json'), 'utf8')),
     result.capacitorPluginRegistry.entries,
   );
+
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test('stageBrowserAssets can explicitly opt notification capture back in for future profiles', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'axolync-android-stage-assets-notifications-'));
+  const sourceRoot = path.join(tempRoot, 'browser-dist');
+  const publicDir = path.join(tempRoot, 'public');
+
+  writeFile(path.join(sourceRoot, 'index.html'), '<!doctype html><title>Axolync</title>');
+
+  const result = stageBrowserAssets({
+    sourceRoot,
+    publicDir,
+    buildFlavor: 'release',
+    includeDemoAssets: false,
+    notificationCaptureEnabled: true,
+  });
+
+  assert.equal(result.notificationCaptureEnabled, true);
+  const stagedIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  assert.match(stagedIndex, /window\.__AXOLYNC_NOTIFICATION_CAPTURE_ENABLED = true/);
+  assert.match(stagedIndex, /window\.__AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = true/);
 
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });

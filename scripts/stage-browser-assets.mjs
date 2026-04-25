@@ -32,6 +32,7 @@ const CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY = Object.freeze([
 const BUILD_FLAVOR_SNIPPET_MARKER = 'id="axolync-build-flavor-override"';
 const NATIVE_STARTUP_SPLASH_SNIPPET_MARKER = 'id="axolync-native-startup-splash-override"';
 const NATIVE_SERVICE_COMPANION_HOST_SNIPPET_MARKER = 'id="axolync-native-service-companion-host-override"';
+const NOTIFICATION_CAPTURE_FEATURE_SNIPPET_MARKER = 'id="axolync-notification-capture-feature-override"';
 const PREINSTALLED_MANIFEST_FALLBACK_SNIPPET_MARKER = 'id="axolync-preinstalled-manifest-fallback-override"';
 const DEFAULT_NATIVE_STARTUP_SPLASH_VARIANT = 'layered';
 const DEFAULT_NATIVE_STARTUP_SPLASH_FIT_MODE = 'contain';
@@ -121,6 +122,10 @@ export function restageDirectoryDeterministically(rootDir) {
 
 function buildBuildFlavorSnippet(buildFlavor) {
   return `<script ${BUILD_FLAVOR_SNIPPET_MARKER}>window.__AXOLYNC_BUILD_FLAVOR = ${JSON.stringify(buildFlavor)};</script>`;
+}
+
+function buildNotificationCaptureFeatureSnippet(enabled) {
+  return `<script ${NOTIFICATION_CAPTURE_FEATURE_SNIPPET_MARKER}>window.__AXOLYNC_NOTIFICATION_CAPTURE_ENABLED = ${enabled ? 'true' : 'false'}; window.__AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = ${enabled ? 'true' : 'false'};</script>`;
 }
 
 function buildNativeStartupSplashSnippet({
@@ -347,6 +352,24 @@ function applyBuildFlavorOverrideToHtml(html, buildFlavor) {
   return `${snippet}\n${html}`;
 }
 
+function applyNotificationCaptureFeatureOverrideToHtml(html, enabled) {
+  const snippet = buildNotificationCaptureFeatureSnippet(enabled);
+  if (html.includes(NOTIFICATION_CAPTURE_FEATURE_SNIPPET_MARKER)) {
+    return html.replace(
+      /<script id="axolync-notification-capture-feature-override">[\s\S]*?<\/script>/u,
+      snippet,
+    );
+  }
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `  ${snippet}\n</head>`);
+  }
+  const doctypeMatch = html.match(/^<!doctype[^>]*>/iu);
+  if (doctypeMatch) {
+    return `${doctypeMatch[0]}\n${snippet}${html.slice(doctypeMatch[0].length)}`;
+  }
+  return `${snippet}\n${html}`;
+}
+
 function applyNativeStartupSplashOverrideToHtml(html, {
   enabled = true,
   variant = DEFAULT_NATIVE_STARTUP_SPLASH_VARIANT,
@@ -495,6 +518,10 @@ export function resolveAndroidNativeStartupSplashMinDurationMs() {
   return normalizePositiveInteger(process.env.AXOLYNC_ANDROID_NATIVE_STARTUP_SPLASH_MIN_DURATION_MS, DEFAULT_NATIVE_STARTUP_SPLASH_MIN_DURATION_MS);
 }
 
+export function resolveAndroidNotificationCaptureEnabled() {
+  return normalizeBoolean(process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED, false);
+}
+
 function ensureRequiredBrowserFiles(sourceRoot) {
   if (!fs.existsSync(sourceRoot)) {
     throw new Error(`Browser source root not found: ${sourceRoot}`);
@@ -550,6 +577,7 @@ export function stageBrowserAssets(options = {}) {
   const nativeStartupSplashVariant = options.nativeStartupSplashVariant ?? resolveAndroidNativeStartupSplashVariant();
   const nativeStartupSplashFitMode = options.nativeStartupSplashFitMode ?? resolveAndroidNativeStartupSplashFitMode(nativeStartupSplashVariant);
   const nativeStartupSplashMinDurationMs = options.nativeStartupSplashMinDurationMs ?? resolveAndroidNativeStartupSplashMinDurationMs();
+  const notificationCaptureEnabled = options.notificationCaptureEnabled ?? resolveAndroidNotificationCaptureEnabled();
   const nativeServiceCompanionAssetsRoot = options.nativeServiceCompanionAssetsRoot ?? resolveNativeServiceCompanionAssetsRoot();
 
   ensureRequiredBrowserFiles(sourceRoot);
@@ -575,7 +603,10 @@ export function stageBrowserAssets(options = {}) {
     applyNativeServiceCompanionHostOverrideToHtml(
       applyNativeStartupSplashOverrideToHtml(
         applyPreinstalledManifestFallbackOverrideToHtml(
-          applyBuildFlavorOverrideToHtml(fs.readFileSync(stagedIndexPath, 'utf8'), buildFlavor),
+          applyNotificationCaptureFeatureOverrideToHtml(
+            applyBuildFlavorOverrideToHtml(fs.readFileSync(stagedIndexPath, 'utf8'), buildFlavor),
+            notificationCaptureEnabled,
+          ),
           preinstalledManifestFallback,
         ),
         {
@@ -658,6 +689,7 @@ export function stageBrowserAssets(options = {}) {
     buildFlavor,
     includeDemoAssets,
     nativeServiceCompanionAssetsRoot,
+    notificationCaptureEnabled,
     capacitorConfig,
     capacitorPluginRegistry,
     preinstalledManifestFallback,

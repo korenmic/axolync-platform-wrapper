@@ -21,7 +21,7 @@
   - Fix Android routing only if the HTML response originates from Capacitor/WebView transport or wrapper route publication, without weakening the working Tauri loopback shape.
   - Add proof that native runtime loopback calls either reach the intended operator route or produce a classified Android transport failure.
 
-- [ ] Respect the generated notification feature flag and suppress Android notification capture when disabled.
+- [x] Respect the generated notification feature flag and suppress Android notification capture when disabled.
   - Consume the builder/browser projected notification feature flag in the Capacitor host.
   - When disabled, do not request, initialize, register, or expose the old Android notification-listener/status-bar capture capability to browser runtime.
   - Keep Android debug ZIP save and other native capabilities unaffected.

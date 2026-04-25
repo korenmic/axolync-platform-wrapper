@@ -130,6 +130,13 @@ export function resolveExpectedLrclibNativeAssetState(apkPath) {
   return path.basename(resolved).includes('lrclib-native') || resolved.includes('/lrclib-native/');
 }
 
+export function resolveExpectedNotificationCaptureState() {
+  const envOverride = String(process.env.AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED ?? '').trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(envOverride)) return true;
+  if (['0', 'false', 'no', 'off'].includes(envOverride)) return false;
+  return false;
+}
+
 export function assertDemoAssetState(zipEntries, shouldIncludeDemoAssets, resolved) {
   const hasAnyDemoTreeEntry = zipEntries.some((entry) => entry.startsWith('assets/public/demo/'));
   for (const expectedEntry of DEBUG_DEMO_ENTRIES) {
@@ -168,6 +175,7 @@ function verifyApk(apkPath) {
   const expectedArtifactFlavor = detectExpectedArtifactFlavor(resolved);
   const shouldIncludeDemoAssets = expectedArtifactFlavor === 'demo' || expectedBuildFlavor === 'debug';
   const shouldIncludeLrclibNative = resolveExpectedLrclibNativeAssetState(resolved);
+  const shouldEnableNotificationCapture = resolveExpectedNotificationCaptureState();
   const indexHtml = readZipEntry(resolved, 'assets/public/index.html');
   const syncWorker = readZipEntry(resolved, 'assets/public/workers/syncengineBridgeWorker.js');
   const lyricWorker = readZipEntry(resolved, 'assets/public/workers/lyricflowBridgeWorker.js');
@@ -177,6 +185,16 @@ function verifyApk(apkPath) {
     indexHtml,
     `window.__AXOLYNC_BUILD_FLAVOR = "${expectedBuildFlavor}";`,
     `APK is missing staged ${expectedBuildFlavor} build flavor override: ${resolved}`,
+  );
+  assertIncludes(
+    indexHtml,
+    `window.__AXOLYNC_NOTIFICATION_CAPTURE_ENABLED = ${shouldEnableNotificationCapture ? 'true' : 'false'};`,
+    `APK notification-capture feature flag does not match the expected profile state: ${resolved}`,
+  );
+  assertIncludes(
+    indexHtml,
+    `window.__AXOLYNC_ANDROID_NOTIFICATION_CAPTURE_ENABLED = ${shouldEnableNotificationCapture ? 'true' : 'false'};`,
+    `APK Android notification-capture feature flag does not match the expected profile state: ${resolved}`,
   );
 
   assertExcludes(
