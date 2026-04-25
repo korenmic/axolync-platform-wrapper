@@ -630,7 +630,7 @@ private class LrclibLocalLoopbackServer(
             registration.addonId,
             registration.companionId,
             "lrclib.db.deploy.completed",
-            mapOf("assetPath" to packagedAssetPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath, "replaced" to replaced)
+            mapOf("assetPath" to packagedAsset.displayPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath, "replaced" to replaced)
         )
         return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAsset.displayPath, compressedSha256, reused = false, replaced = replaced)
     }
@@ -926,9 +926,10 @@ private fun zipAssetEntryExists(context: Context, zipAssetPath: String, entryNam
         context.assets.open(zipAssetPath).use { zipInput ->
             ZipInputStream(zipInput).use { zip ->
                 while (true) {
-                    val entry = zip.nextEntry ?: return false
-                    if (!entry.isDirectory && entry.name == entryName) return true
+                    val entry = zip.nextEntry ?: break
+                    if (!entry.isDirectory && entry.name == entryName) return@use true
                 }
+                false
             }
         }
     } catch (_: Exception) {
