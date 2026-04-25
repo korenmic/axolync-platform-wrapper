@@ -128,6 +128,7 @@ function detectExpectedArtifactFlavor(apkPath) {
 }
 
 export function resolveExpectedLrclibNativeAssetState(apkPath) {
+  if (detectExpectedArtifactFlavor(apkPath) === 'demo') return false;
   const envOverride = String(process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS ?? '').trim().toLowerCase();
   if (['1', 'true', 'yes', 'on'].includes(envOverride)) return true;
   if (['0', 'false', 'no', 'off'].includes(envOverride)) return false;

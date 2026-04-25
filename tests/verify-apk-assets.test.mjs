@@ -77,6 +77,7 @@ test('resolveExpectedLrclibNativeAssetState lets builder declare native payload 
   try {
     process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS = '1';
     assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/app-normal-release.apk'), true);
+    assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/demo/release/app-demo-release.apk'), false);
 
     process.env.AXOLYNC_ANDROID_EXPECT_LRCLIB_NATIVE_ASSETS = '0';
     assert.equal(resolveExpectedLrclibNativeAssetState('/tmp/lrclib-native/app-normal-release.apk'), false);
