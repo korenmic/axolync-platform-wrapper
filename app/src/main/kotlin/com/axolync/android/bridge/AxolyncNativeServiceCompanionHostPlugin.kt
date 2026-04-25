@@ -1468,7 +1468,19 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
     private fun loadRegistrations(): Map<String, NativeBridgeRegistration> {
         val manifestText = readAssetText(ASSET_MANIFEST_PATH) ?: return emptyMap()
-        val parsed = JSONObject(manifestText)
+        val parsed = try {
+            JSONObject(manifestText)
+        } catch (error: Throwable) {
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "error",
+                addonId = null,
+                companionId = null,
+                event = "host.registrations.manifest-invalid",
+                details = mapOf("assetPath" to ASSET_MANIFEST_PATH, "error" to (error.message ?: error.toString()))
+            )
+            return emptyMap()
+        }
         val companions = parsed.optJSONArray("companions") ?: JSONArray()
         val resolved = mutableMapOf<String, NativeBridgeRegistration>()
         for (index in 0 until companions.length()) {
@@ -1496,7 +1508,23 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                 )
                 continue
             }
-            val descriptor = parseOperatorDescriptor(JSONObject(descriptorText))
+            val descriptor = try {
+                parseOperatorDescriptor(JSONObject(descriptorText))
+            } catch (error: Throwable) {
+                appendDiagnostic(
+                    source = "wrapper-host",
+                    level = "error",
+                    addonId = addonId,
+                    companionId = companionId,
+                    event = "host.registration.descriptor-invalid",
+                    details = mapOf(
+                        "entrypoint" to entrypoint,
+                        "assetPath" to descriptorAssetPath,
+                        "error" to (error.message ?: error.toString())
+                    )
+                )
+                continue
+            }
             resolved[companionKey(addonId, companionId)] = NativeBridgeRegistration(
                 addonId = addonId,
                 companionId = companionId,
@@ -1565,7 +1593,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     private fun readAssetText(assetPath: String): String? {
         return try {
             context.assets.open(assetPath).bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-        } catch (_: FileNotFoundException) {
+        } catch (_: Exception) {
             null
         }
     }

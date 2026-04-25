@@ -27,7 +27,7 @@
   - Keep Android debug ZIP save and other native capabilities unaffected.
   - Add wrapper-level proof that a disabled profile does not publish notification capture availability while an explicit future enabled profile still can.
 
-- [ ] Prevent LRCLIB-native Android APK startup crashes from staged native payload failures.
+- [x] Prevent LRCLIB-native Android APK startup crashes from staged native payload failures.
   - Treat the latest manual report as a hard Android wrapper bug: the LRCLIB-native preinstall APK does not launch at all, while the normal APK without native LRCLIB launches.
   - Reproduce and isolate whether the crash happens during asset enumeration, native companion registry parsing, Brotli/SQLite dependency initialization, DB deploy setup, loopback server preparation, or WebView bootstrap.
   - Make all LRCLIB native companion startup/deploy failures lazy and failure-contained: the app must still launch, mark LRCLIB native unavailable, expose diagnostics, and allow remote LRCLIB fallback rather than crashing the process.

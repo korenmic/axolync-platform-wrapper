@@ -179,6 +179,34 @@ export function assertLrclibNativeAssetState(zipEntries, shouldIncludeLrclibNati
   }
 }
 
+export function assertNativeCompanionDescriptorsParse(apkPath, zipEntries, resolved) {
+  const manifestEntry = 'assets/public/native-service-companions/manifest.json';
+  if (!zipEntries.includes(manifestEntry)) return;
+  let manifest;
+  try {
+    manifest = JSON.parse(readZipEntry(apkPath, manifestEntry));
+  } catch (error) {
+    throw new Error(`APK ships an invalid native companion manifest that can break startup: ${resolved} (${error.message || error})`);
+  }
+  for (const companion of manifest.companions || []) {
+    const entrypoint = String(companion?.entrypoint || '').trim().replaceAll('\\', '/').replace(/^\/+/u, '');
+    if (!entrypoint) continue;
+    const descriptorEntry = `assets/public/native-service-companions/${entrypoint}`;
+    if (!zipEntries.includes(descriptorEntry)) {
+      throw new Error(`APK native companion descriptor is missing: ${resolved} (${descriptorEntry})`);
+    }
+    let descriptor;
+    try {
+      descriptor = JSON.parse(readZipEntry(apkPath, descriptorEntry));
+    } catch (error) {
+      throw new Error(`APK ships an invalid native companion descriptor that can break startup: ${resolved} (${descriptorEntry}: ${error.message || error})`);
+    }
+    if (!String(descriptor.runtime_operator_kind || '').trim()) {
+      throw new Error(`APK native companion descriptor is missing runtime_operator_kind: ${resolved} (${descriptorEntry})`);
+    }
+  }
+}
+
 function verifyApk(apkPath) {
   const resolved = path.resolve(apkPath);
   const expectedBuildFlavor = detectExpectedBuildFlavor(resolved);
@@ -190,6 +218,7 @@ function verifyApk(apkPath) {
   const syncWorker = readZipEntry(resolved, 'assets/public/workers/syncengineBridgeWorker.js');
   const lyricWorker = readZipEntry(resolved, 'assets/public/workers/lyricflowBridgeWorker.js');
   const zipEntries = listZipEntries(resolved);
+  assertNativeCompanionDescriptorsParse(resolved, zipEntries, resolved);
 
   assertIncludes(
     indexHtml,

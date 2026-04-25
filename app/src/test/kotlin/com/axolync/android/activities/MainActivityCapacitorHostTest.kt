@@ -93,6 +93,8 @@ class MainActivityCapacitorHostTest {
         assertTrue(source.contains("runtime-operator.lrclib.loopback.bound"))
         assertTrue(source.contains("host.registration.loaded"))
         assertTrue(source.contains("host.registration.descriptor-missing"))
+        assertTrue(source.contains("host.registration.descriptor-invalid"))
+        assertTrue(source.contains("host.registrations.manifest-invalid"))
         assertTrue(source.contains("lrclib.db.asset.resolved"))
         assertTrue(source.contains("lrclib.sqlite.open.completed"))
         assertTrue(source.contains("lrclib.sqlite.query.completed"))
