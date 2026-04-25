@@ -36,9 +36,9 @@ test('assertDemoAssetState rejects demo-free payloads that still ship demo media
 test('assertLrclibNativeAssetState accepts complete native-capable LRCLIB payloads', () => {
   const zipEntries = [
     'assets/public/index.html',
+    'assets/public/plugins/preinstalled/axolync-addon-lrclib.zip',
     'assets/public/native-service-companions/manifest.json',
     'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/operator.json',
-    'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br',
   ];
 
   assert.doesNotThrow(() => {
@@ -60,6 +60,16 @@ test('assertLrclibNativeAssetState rejects partial or remote-only LRCLIB native 
   assert.throws(() => {
     assertLrclibNativeAssetState(partialZipEntries, false, '/tmp/axolync.apk');
   }, /unexpectedly ships LRCLIB native companion assets/);
+
+  assert.throws(() => {
+    assertLrclibNativeAssetState([
+      'assets/public/index.html',
+      'assets/public/plugins/preinstalled/axolync-addon-lrclib.zip',
+      'assets/public/native-service-companions/manifest.json',
+      'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/operator.json',
+      'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br',
+    ], true, '/tmp/axolync-lrclib-native.apk');
+  }, /duplicate exploded LRCLIB DB payload/);
 });
 
 test('resolveExpectedLrclibNativeAssetState lets builder declare native payload expectations for canonical Gradle output names', () => {

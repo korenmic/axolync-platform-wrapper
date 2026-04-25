@@ -17,13 +17,17 @@ import android.os.Build
 import org.brotli.dec.BrotliInputStream
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.zip.ZipInputStream
 import kotlin.random.Random
 
 private const val CAPACITOR_HOST_FAMILY = "capacitor"
@@ -103,6 +107,11 @@ private data class LrclibDbDeploymentResult(
     val compressedAssetSha256: String,
     val reused: Boolean,
     val replaced: Boolean
+)
+
+private data class PackagedNativeAssetRef(
+    val displayPath: String,
+    val openInput: () -> InputStream
 )
 
 private data class LrclibQueryResponse(
@@ -551,16 +560,20 @@ private class LrclibLocalLoopbackServer(
         if (dbConfig.deployPolicy.isNotBlank() && dbConfig.deployPolicy != "once-per-compressed-sha256") {
             throw IllegalStateException("Unsupported LRCLIB DB deploy policy: ${dbConfig.deployPolicy}")
         }
-        val packagedAssetPath = packagedNativeAssetPath(registration.entrypoint, dbConfig.packagedAssetPath.ifEmpty { dbConfig.compressedAssetPath })
+        val packagedAsset = resolvePackagedNativeAsset(
+            context,
+            registration,
+            dbConfig.packagedAssetPath.ifEmpty { dbConfig.compressedAssetPath }
+        )
         logger(
             "runtime-operator",
             "info",
             registration.addonId,
             registration.companionId,
             "lrclib.db.asset.resolved",
-            mapOf("assetPath" to packagedAssetPath, "deployPolicy" to dbConfig.deployPolicy)
+            mapOf("assetPath" to packagedAsset.displayPath, "deployPolicy" to dbConfig.deployPolicy)
         )
-        val compressedSha256 = sha256Asset(context, packagedAssetPath)
+        val compressedSha256 = sha256InputStream(packagedAsset.openInput())
         val deployedFileName = dbConfig.deployedFileName.ifEmpty { "db.sqlite3" }
         val deployDir = File(
             context.filesDir,
@@ -587,15 +600,15 @@ private class LrclibLocalLoopbackServer(
                 registration.addonId,
                 registration.companionId,
                 "lrclib.db.deploy.reused",
-                mapOf("assetPath" to packagedAssetPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath)
+                mapOf("assetPath" to packagedAsset.displayPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath)
             )
-            return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAssetPath, compressedSha256, reused = true, replaced = false)
+            return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAsset.displayPath, compressedSha256, reused = true, replaced = false)
         }
 
         val replaced = deployDir.exists()
         deployDir.deleteRecursively()
         deployDir.mkdirs()
-        BrotliInputStream(context.assets.open(packagedAssetPath)).use { input ->
+        BrotliInputStream(packagedAsset.openInput()).use { input ->
             dbFile.outputStream().use { output -> input.copyTo(output) }
         }
         if (dbConfig.sqliteHeaderRequired && !hasSqliteHeader(dbFile)) {
@@ -604,7 +617,7 @@ private class LrclibLocalLoopbackServer(
         }
         metadataFile.writeText(
             JSONObject()
-                .put("compressedAssetPath", packagedAssetPath)
+                .put("compressedAssetPath", packagedAsset.displayPath)
                 .put("compressedAssetSha256", compressedSha256)
                 .put("deployedDbPath", dbFile.absolutePath)
                 .put("deployedAtMs", System.currentTimeMillis())
@@ -619,7 +632,7 @@ private class LrclibLocalLoopbackServer(
             "lrclib.db.deploy.completed",
             mapOf("assetPath" to packagedAssetPath, "assetSha256" to compressedSha256, "dbPath" to dbFile.absolutePath, "replaced" to replaced)
         )
-        return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAssetPath, compressedSha256, reused = false, replaced = replaced)
+        return LrclibDbDeploymentResult(dbFile, metadataFile, packagedAsset.displayPath, compressedSha256, reused = false, replaced = replaced)
     }
 }
 
@@ -873,15 +886,76 @@ private fun packagedNativeAssetPath(entrypoint: String, packagedAssetPath: Strin
         .joinToString("/")
 }
 
+private fun resolvePackagedNativeAsset(
+    context: Context,
+    registration: NativeBridgeRegistration,
+    packagedAssetPath: String
+): PackagedNativeAssetRef {
+    val normalizedPackagedAssetPath = normalizeAssetPath(packagedAssetPath)
+    val explodedAssetPath = packagedNativeAssetPath(registration.entrypoint, normalizedPackagedAssetPath)
+    if (assetExists(context, explodedAssetPath)) {
+        return PackagedNativeAssetRef(explodedAssetPath) { context.assets.open(explodedAssetPath) }
+    }
+
+    val addonZipAssetPath = "public/plugins/preinstalled/${registration.addonId}.zip"
+    if (assetExists(context, addonZipAssetPath) && zipAssetEntryExists(context, addonZipAssetPath, normalizedPackagedAssetPath)) {
+        val displayPath = "$addonZipAssetPath!/$normalizedPackagedAssetPath"
+        return PackagedNativeAssetRef(displayPath) {
+            openZipAssetEntry(context, addonZipAssetPath, normalizedPackagedAssetPath)
+        }
+    }
+
+    throw FileNotFoundException(
+        "Packaged native asset is missing for ${registration.addonId}/${registration.companionId}: " +
+            "$normalizedPackagedAssetPath. Searched: $explodedAssetPath | $addonZipAssetPath!/$normalizedPackagedAssetPath"
+    )
+}
+
 private fun normalizeAssetPath(value: String): String =
     value.trim().replace('\\', '/').trimStart('/')
 
-private fun sha256Asset(context: Context, assetPath: String): String {
+private fun assetExists(context: Context, assetPath: String): Boolean =
+    try {
+        context.assets.open(assetPath).use { true }
+    } catch (_: Exception) {
+        false
+    }
+
+private fun zipAssetEntryExists(context: Context, zipAssetPath: String, entryName: String): Boolean =
+    try {
+        context.assets.open(zipAssetPath).use { zipInput ->
+            ZipInputStream(zipInput).use { zip ->
+                while (true) {
+                    val entry = zip.nextEntry ?: return false
+                    if (!entry.isDirectory && entry.name == entryName) return true
+                }
+            }
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+private fun openZipAssetEntry(context: Context, zipAssetPath: String, entryName: String): InputStream {
+    context.assets.open(zipAssetPath).use { zipInput ->
+        ZipInputStream(zipInput).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.isDirectory || entry.name != entryName) continue
+                val output = ByteArrayOutputStream()
+                zip.copyTo(output)
+                return ByteArrayInputStream(output.toByteArray())
+            }
+        }
+    }
+    throw FileNotFoundException("Missing zip entry $entryName in $zipAssetPath")
+}
+
+private fun sha256InputStream(input: InputStream): String {
     val digest = MessageDigest.getInstance("SHA-256")
-    context.assets.open(assetPath).use { input ->
+    input.use {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         while (true) {
-            val read = input.read(buffer)
+            val read = it.read(buffer)
             if (read <= 0) break
             digest.update(buffer, 0, read)
         }

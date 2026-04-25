@@ -11,7 +11,12 @@ const DEBUG_DEMO_ENTRIES = [
 const LRCLIB_NATIVE_REQUIRED_ENTRIES = [
   'assets/public/native-service-companions/manifest.json',
   'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/operator.json',
+  'assets/public/plugins/preinstalled/axolync-addon-lrclib.zip',
+];
+
+const LRCLIB_NATIVE_FORBIDDEN_EXPLODED_DB_ENTRIES = [
   'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br',
+  'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br.provenance.json',
 ];
 
 const ZIP_LIST_POWERSHELL = [
@@ -165,6 +170,11 @@ export function assertLrclibNativeAssetState(zipEntries, shouldIncludeLrclibNati
   for (const expectedEntry of LRCLIB_NATIVE_REQUIRED_ENTRIES) {
     if (!zipEntries.includes(expectedEntry)) {
       throw new Error(`APK is missing required LRCLIB native asset in native-capable profile: ${resolved} (${expectedEntry})`);
+    }
+  }
+  for (const forbiddenEntry of LRCLIB_NATIVE_FORBIDDEN_EXPLODED_DB_ENTRIES) {
+    if (zipEntries.includes(forbiddenEntry)) {
+      throw new Error(`APK ships a duplicate exploded LRCLIB DB payload outside the preinstalled addon zip: ${resolved} (${forbiddenEntry})`);
     }
   }
 }

@@ -52,8 +52,13 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
         id: 'axolync-addon-vibra',
         url: '/plugins/preinstalled/axolync-addon-vibra.zip',
       },
+      {
+        id: 'axolync-addon-lrclib',
+        url: '/plugins/preinstalled/axolync-addon-lrclib.zip',
+      },
     ],
   }));
+  writeFile(path.join(sourceRoot, 'plugins', 'preinstalled', 'axolync-addon-lrclib.zip'), 'zip-with-db');
   writeFile(path.join(sourceRoot, 'themes', 'preinstalled', 'manifest.json'), JSON.stringify({
     themes: [
       {
@@ -70,7 +75,6 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   writeFile(path.join(nativeServiceCompanionAssetsRoot, 'manifest.json'), '{"companions":[{"addonId":"axolync-addon-vibra"},{"addonId":"axolync-addon-lrclib","companionId":"lrclib_local","wrapper":"capacitor","entrypoint":"axolync-addon-lrclib/lrclib_local/capacitor/operator.json"}]}');
   writeFile(path.join(nativeServiceCompanionAssetsRoot, 'axolync-addon-vibra', 'vibra_proxy', 'capacitor', 'vibraProxyRuntimeOperator.json'), '{"runtime_operator_kind":"shazam-discovery-loopback-v1"}');
   writeFile(path.join(nativeServiceCompanionAssetsRoot, 'axolync-addon-lrclib', 'lrclib_local', 'capacitor', 'operator.json'), '{"runtime_operator_kind":"lrclib-local-loopback-v1"}');
-  writeFile(path.join(nativeServiceCompanionAssetsRoot, 'axolync-addon-lrclib', 'lrclib_local', 'capacitor', 'native', 'shared', 'lrclib_local', 'assets', 'db.sqlite3.br'), 'brotli-db');
 
   const result = stageBrowserAssets({
     sourceRoot,
@@ -162,9 +166,10 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
     fs.readFileSync(path.join(publicDir, 'native-service-companions', 'axolync-addon-lrclib', 'lrclib_local', 'capacitor', 'operator.json'), 'utf8'),
     '{"runtime_operator_kind":"lrclib-local-loopback-v1"}',
   );
+  assert.equal(fs.readFileSync(path.join(publicDir, 'plugins', 'preinstalled', 'axolync-addon-lrclib.zip'), 'utf8'), 'zip-with-db');
   assert.equal(
-    fs.readFileSync(path.join(publicDir, 'native-service-companions', 'axolync-addon-lrclib', 'lrclib_local', 'capacitor', 'native', 'shared', 'lrclib_local', 'assets', 'db.sqlite3.br'), 'utf8'),
-    'brotli-db',
+    fs.existsSync(path.join(publicDir, 'native-service-companions', 'axolync-addon-lrclib', 'lrclib_local', 'capacitor', 'native', 'shared', 'lrclib_local', 'assets', 'db.sqlite3.br')),
+    false,
   );
   assert.equal(fs.readFileSync(path.join(publicDir, 'cordova.js'), 'utf8'), '');
   assert.equal(fs.readFileSync(path.join(publicDir, 'cordova_plugins.js'), 'utf8'), '');
