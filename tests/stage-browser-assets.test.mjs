@@ -119,6 +119,8 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
 
   assert.equal(result.publicDir, publicDir);
   assert.equal(result.wrapperLayout.publicDir, path.join(process.cwd(), 'app', 'src', 'main', 'assets', 'public'));
+  assert.equal(result.wrapperLayout.compatibilityMode, true);
+  assert.equal(result.wrapperLayout.authorityPath, 'wrappers/capacitor/android');
   assert.equal(result.buildFlavor, 'debug');
   assert.equal(result.nativeServiceCompanionAssetsRoot, nativeServiceCompanionAssetsRoot);
   assert.equal(result.capacitorConfig.rootPath, path.join(assetRoot, 'capacitor.config.json'));

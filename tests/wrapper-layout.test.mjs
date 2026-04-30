@@ -19,3 +19,22 @@ test('wrapper layout exposes Capacitor Android under the neutral wrapper-family 
   assert.equal(fs.existsSync(path.join(repoRoot, 'wrappers', 'capacitor', 'shared', 'README.md')), true);
   assert.equal(fs.existsSync(path.join(repoRoot, 'wrappers', 'capacitor', 'ios', 'README.md')), true);
 });
+
+test('promoted layout compatibility still points at required Android and Capacitor build files', () => {
+  const layout = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, 'config', 'wrapper-layout.json'), 'utf8'),
+  );
+  const android = layout.families.capacitor.android;
+  const required = [
+    path.join(android.gradleProjectPath, 'build.gradle.kts'),
+    'settings.gradle.kts',
+    'capacitor.config.json',
+    path.join(android.nativeSourcePath, 'activities', 'MainActivity.kt'),
+    path.join(android.nativeSourcePath, 'bridge', 'AxolyncNativeServiceCompanionHostPlugin.kt'),
+  ];
+
+  assert.equal(layout.compatibilityMode, true);
+  for (const relativePath of required) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), true, `missing ${relativePath}`);
+  }
+});

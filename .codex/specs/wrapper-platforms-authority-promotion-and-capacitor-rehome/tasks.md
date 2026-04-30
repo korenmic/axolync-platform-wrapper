@@ -30,7 +30,7 @@
   - Add structural tests around Vibra and LRCLIB native payload staging.
   - _Requirements: 4.3, 6.2, 6.3_
 
-- [ ] 6. Add Android build and compatibility proof for the promoted layout.
+- [x] 6. Add Android build and compatibility proof for the promoted layout.
   - Add structural tests proving required Android/Capacitor files still exist after rehome.
   - Add compatibility tests for old builder-facing path assumptions while transition mode is active.
   - Ensure diagnostics expose whether compatibility mode or target authority mode was used.
