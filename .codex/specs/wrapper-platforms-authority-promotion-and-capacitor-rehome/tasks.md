@@ -12,7 +12,7 @@
   - Update path references in scripts/config so Android builds still resolve.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 4.1_
 
-- [ ] 3. Preserve browser asset staging through the new layout.
+- [x] 3. Preserve browser asset staging through the new layout.
   - Update staging scripts and Gradle/Capacitor hooks to find browser output through the rehomed paths.
   - Add tests or structural checks for the staged asset destination.
   - Keep compatibility path handling while builder still consumes old repo/path assumptions.

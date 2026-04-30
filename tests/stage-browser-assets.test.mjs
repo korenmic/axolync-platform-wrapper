@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  resolveCapacitorAndroidLayout,
   restageDirectoryDeterministically,
   stageBrowserAssets,
 } from '../scripts/stage-browser-assets.mjs';
@@ -29,6 +30,34 @@ test('restageDirectoryDeterministically rewrites a staged directory without stal
 
     assert.deepEqual(fs.readdirSync(stagedDir), ['a.txt', 'b.txt']);
     assert.equal(fs.existsSync(`${stagedDir}.axolync-deterministic`), false);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('resolveCapacitorAndroidLayout preserves asset staging through wrapper-family compatibility config', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'axolync-android-layout-'));
+  try {
+    writeFile(path.join(tempRoot, 'config', 'wrapper-layout.json'), JSON.stringify({
+      compatibilityMode: true,
+      families: {
+        capacitor: {
+          android: {
+            authorityPath: 'wrappers/capacitor/android',
+            assetPublicPath: 'app/src/main/assets/public',
+            gradleProjectPath: 'app',
+            nativeSourcePath: 'app/src/main/kotlin/com/axolync/android',
+          },
+        },
+      },
+    }));
+
+    const layout = resolveCapacitorAndroidLayout({ repoRoot: tempRoot });
+
+    assert.equal(layout.compatibilityMode, true);
+    assert.equal(layout.authorityPath, 'wrappers/capacitor/android');
+    assert.equal(layout.publicDir, path.join(tempRoot, 'app', 'src', 'main', 'assets', 'public'));
+    assert.equal(layout.assetsRoot, path.join(tempRoot, 'app', 'src', 'main', 'assets'));
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -89,6 +118,7 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   });
 
   assert.equal(result.publicDir, publicDir);
+  assert.equal(result.wrapperLayout.publicDir, path.join(process.cwd(), 'app', 'src', 'main', 'assets', 'public'));
   assert.equal(result.buildFlavor, 'debug');
   assert.equal(result.nativeServiceCompanionAssetsRoot, nativeServiceCompanionAssetsRoot);
   assert.equal(result.capacitorConfig.rootPath, path.join(assetRoot, 'capacitor.config.json'));

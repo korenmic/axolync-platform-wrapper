@@ -7,6 +7,7 @@ const assetsRoot = path.join(repoRoot, 'app', 'src', 'main', 'assets');
 const publicDir = path.join(repoRoot, 'app', 'src', 'main', 'assets', 'public');
 const capacitorAssetsDir = path.join(assetsRoot, 'capacitor');
 const capacitorConfigPath = path.join(repoRoot, 'capacitor.config.json');
+const wrapperLayoutPath = path.join(repoRoot, 'config', 'wrapper-layout.json');
 const capacitorNativeBridgeRuntimePath = path.join(
   repoRoot,
   'node_modules',
@@ -142,6 +143,24 @@ function readJsonIfPresent(filePath, fallbackValue) {
     return fallbackValue;
   }
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+export function resolveCapacitorAndroidLayout(options = {}) {
+  const root = options.repoRoot ?? repoRoot;
+  const layoutPath = options.layoutPath ?? path.join(root, 'config', 'wrapper-layout.json');
+  const layout = readJsonIfPresent(layoutPath, null);
+  const android = layout?.families?.capacitor?.android ?? {};
+  const assetPublicPath = android.assetPublicPath ?? 'app/src/main/assets/public';
+  const assetsRootPath = path.dirname(assetPublicPath);
+  return {
+    layoutPath,
+    compatibilityMode: layout?.compatibilityMode === true,
+    authorityPath: android.authorityPath ?? 'wrappers/capacitor/android',
+    publicDir: path.join(root, assetPublicPath),
+    assetsRoot: path.join(root, assetsRootPath),
+    gradleProjectPath: android.gradleProjectPath ?? 'app',
+    nativeSourcePath: android.nativeSourcePath ?? 'app/src/main/kotlin/com/axolync/android',
+  };
 }
 
 function buildPreinstalledManifestFallbackSnippet({
@@ -569,8 +588,9 @@ export function stageBrowserAssets(options = {}) {
   const buildFlavor = options.buildFlavor ?? resolveAndroidBuildFlavor();
   const includeDemoAssets = options.includeDemoAssets ?? resolveAndroidIncludeDemoAssets(buildFlavor);
   const sourceRoot = options.sourceRoot ?? (includeDemoAssets ? resolveDemoSourceRoot() : resolveSourceRoot());
-  const targetPublicDir = options.publicDir ?? publicDir;
-  const targetAssetRoot = options.assetRoot ?? assetsRoot;
+  const layout = options.layout ?? resolveCapacitorAndroidLayout({ layoutPath: wrapperLayoutPath });
+  const targetPublicDir = options.publicDir ?? layout.publicDir ?? publicDir;
+  const targetAssetRoot = options.assetRoot ?? layout.assetsRoot ?? assetsRoot;
   const demoAssetsRoot = options.demoAssetsRoot ?? resolveDemoAssetsRoot();
   const demoPluginsRoot = options.demoPluginsRoot ?? resolveDemoPluginsRoot();
   const demoPlayerHtml = options.demoPlayerHtml ?? resolveDemoPlayerHtml();
@@ -683,6 +703,7 @@ export function stageBrowserAssets(options = {}) {
   return {
     sourceRoot,
     publicDir: targetPublicDir,
+    wrapperLayout: layout,
     demoAssetsRoot,
     demoPluginsRoot,
     demoPlayerHtml,
