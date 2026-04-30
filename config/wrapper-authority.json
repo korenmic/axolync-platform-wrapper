@@ -1,0 +1,17 @@
+{
+  "targetRepo": "axolync-platform-wrapper",
+  "currentPhysicalRepo": "axolync-android-wrapper",
+  "migrationMode": "rename-refactor-source",
+  "compatibilityAlias": "axolync-android-wrapper",
+  "activeWrapperFamilies": ["capacitor"],
+  "activePlatformPaths": {
+    "capacitorAndroid": "wrappers/capacitor/android",
+    "capacitorShared": "wrappers/capacitor/shared",
+    "capacitorIosPlaceholder": "wrappers/capacitor/ios"
+  },
+  "removalCriteria": [
+    "builder resolves axolync-platform-wrapper directly",
+    "Android build/report parity is proven from wrappers/capacitor/android",
+    "no builder or bootstrap docs require axolync-android-wrapper as the runtime authority"
+  ]
+}

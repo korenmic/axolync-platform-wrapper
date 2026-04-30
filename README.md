@@ -1,5 +1,9 @@
 # Axolync Android Wrapper
 
+Target wrapper authority: `axolync-platform-wrapper`.
+
+This checkout is still named `axolync-android-wrapper` during rename/refactor migration. Treat the old name as a compatibility alias only. See [docs/wrapper-platform-authority.md](docs/wrapper-platform-authority.md) and [config/wrapper-authority.json](config/wrapper-authority.json).
+
 ## Migration Status
 
 This README describes the active Capacitor-based Android host introduced by Migration 05.
@@ -29,6 +33,8 @@ Native Android shell for the Axolync web app.
 
 ## Project Structure
 
+- `config/wrapper-authority.json` - target wrapper authority identity and compatibility alias policy
+- `docs/wrapper-platform-authority.md` - promotion/rename policy for `axolync-platform-wrapper`
 - `app/src/main/kotlin/com/axolync/android/`
   - `activities/MainActivity.kt` - thin Capacitor host activity
 - `app/src/main/res/`

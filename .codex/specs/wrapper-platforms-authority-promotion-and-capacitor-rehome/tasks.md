@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Encode the target wrapper authority identity in repo docs and config.
+- [x] 1. Encode the target wrapper authority identity in repo docs and config.
   - Add or update repo-local docs to describe `axolync-platform-wrapper` as the target identity.
   - Document whether the active path is rename/refactor or temporary migration-source mode.
   - Add compatibility notes for any remaining `axolync-android-wrapper` naming.
