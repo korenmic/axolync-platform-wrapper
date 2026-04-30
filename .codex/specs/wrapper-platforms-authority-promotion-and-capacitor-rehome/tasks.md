@@ -36,7 +36,7 @@
   - Ensure diagnostics expose whether compatibility mode or target authority mode was used.
   - _Requirements: 4.1, 4.4, 5.2, 6.1, 6.4_
 
-- [ ] 7. Scope or remove stale Android-only repo identity surfaces.
+- [x] 7. Scope or remove stale Android-only repo identity surfaces.
   - Update Android-specific docs so they describe `wrappers/capacitor/android`, not the whole repo identity.
   - Mark temporary compatibility aliases with removal criteria.
   - Add guardrails that prevent new shared wrapper code from being added under Android-only paths.

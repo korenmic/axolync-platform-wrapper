@@ -18,3 +18,7 @@ This checkout is currently still physically named `axolync-android-wrapper`. Tre
 Remaining `axolync-android-wrapper` naming is allowed only where external builder/bootstrap code still consumes the old checkout name. New shared wrapper code should be written under wrapper-family paths and docs should describe Android as one child platform under Capacitor.
 
 The compatibility alias can be removed after builder resolves `axolync-platform-wrapper` directly, Android artifact parity is proven from the rehomed path, and no bootstrap docs require the old repo name as the runtime authority.
+
+## Android-Specific Scope
+
+Use `wrappers/capacitor/android/` for Android host details. Shared host protocol, deployment, diagnostics, and wrapper defaults belong under `wrappers/capacitor/shared/` or `native-service-companions/` so future Tauri, Electron, and iOS work does not inherit Android-only ownership names.

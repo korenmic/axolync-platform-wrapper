@@ -1,4 +1,4 @@
-# Axolync Android Wrapper
+# Axolync Platform Wrapper Migration Source
 
 Target wrapper authority: `axolync-platform-wrapper`.
 
@@ -14,7 +14,7 @@ This README describes the active Capacitor-based Android host introduced by Migr
 
 Treat the embedded-server architecture as archived legacy behavior. The active host path in this repository is now the thin Capacitor shell described below.
 
-Native Android shell for the Axolync web app.
+Android is one child target under the Capacitor wrapper family. Repo-level docs should describe the neutral platform-wrapper authority; Android-specific runtime notes belong under `wrappers/capacitor/android/`.
 
 ## What This Project Does
 
