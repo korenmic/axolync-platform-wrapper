@@ -24,7 +24,7 @@
   - Add tests for unsupported, unavailable, refused, startup-failed, and running capability states.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 6.2_
 
-- [ ] 5. Harden native payload deployment and duplicate prevention after rehome.
+- [x] 5. Harden native payload deployment and duplicate prevention after rehome.
   - Add or update path normalization for app-private deployment locations.
   - Verify compressed native payloads are not copied into both addon zip payloads and unrelated APK root locations.
   - Add structural tests around Vibra and LRCLIB native payload staging.

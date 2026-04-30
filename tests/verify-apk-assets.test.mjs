@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   assertDemoAssetState,
   assertLrclibNativeAssetState,
+  assertNoDuplicateCompressedNativePayloadRoots,
   resolveExpectedLrclibNativeAssetState,
   resolveExpectedNotificationCaptureState,
 } from '../scripts/verify-apk-assets.mjs';
@@ -70,6 +71,24 @@ test('assertLrclibNativeAssetState rejects partial or remote-only LRCLIB native 
       'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br',
     ], true, '/tmp/axolync-lrclib-native.apk');
   }, /duplicate exploded LRCLIB DB payload/);
+});
+
+test('assertNoDuplicateCompressedNativePayloadRoots rejects descriptor-adjacent compressed payload copies generically', () => {
+  assert.doesNotThrow(() => {
+    assertNoDuplicateCompressedNativePayloadRoots([
+      'assets/public/native-service-companions/manifest.json',
+      'assets/public/native-service-companions/axolync-addon-vibra/vibra_proxy/capacitor/vibraProxyRuntimeOperator.json',
+      'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/operator.json',
+      'assets/public/plugins/preinstalled/axolync-addon-lrclib.zip',
+    ], '/tmp/app-normal-release.apk');
+  });
+
+  assert.throws(() => {
+    assertNoDuplicateCompressedNativePayloadRoots([
+      'assets/public/native-service-companions/manifest.json',
+      'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br',
+    ], '/tmp/app-normal-release.apk');
+  }, /compressed native payload archives outside addon zips/);
 });
 
 test('resolveExpectedLrclibNativeAssetState lets builder declare native payload expectations for canonical Gradle output names', () => {

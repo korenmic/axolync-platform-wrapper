@@ -19,6 +19,8 @@ const LRCLIB_NATIVE_FORBIDDEN_EXPLODED_DB_ENTRIES = [
   'assets/public/native-service-companions/axolync-addon-lrclib/lrclib_local/capacitor/native/shared/lrclib_local/assets/db.sqlite3.br.provenance.json',
 ];
 
+const EXPLODED_NATIVE_PAYLOAD_ARCHIVE_PATTERN = /^assets\/public\/native-service-companions\/.+\/native\/shared\/.+\.(?:br|zip|tar|gz|xz|7z)$/u;
+
 const ZIP_LIST_POWERSHELL = [
   "$ErrorActionPreference = 'Stop'",
   'Add-Type -AssemblyName System.IO.Compression.FileSystem',
@@ -180,6 +182,15 @@ export function assertLrclibNativeAssetState(zipEntries, shouldIncludeLrclibNati
   }
 }
 
+export function assertNoDuplicateCompressedNativePayloadRoots(zipEntries, resolved) {
+  const forbiddenEntries = zipEntries.filter((entry) => EXPLODED_NATIVE_PAYLOAD_ARCHIVE_PATTERN.test(entry));
+  if (forbiddenEntries.length > 0) {
+    throw new Error(
+      `APK ships compressed native payload archives outside addon zips or descriptor-only companion staging: ${resolved} (${forbiddenEntries.join(', ')})`,
+    );
+  }
+}
+
 export function assertNativeCompanionDescriptorsParse(apkPath, zipEntries, resolved) {
   const manifestEntry = 'assets/public/native-service-companions/manifest.json';
   if (!zipEntries.includes(manifestEntry)) return;
@@ -266,6 +277,7 @@ function verifyApk(apkPath) {
   }
   assertDemoAssetState(zipEntries, shouldIncludeDemoAssets, resolved);
   assertLrclibNativeAssetState(zipEntries, shouldIncludeLrclibNative, resolved);
+  assertNoDuplicateCompressedNativePayloadRoots(zipEntries, resolved);
 
   console.log(`[verify-apk-assets] ok ${resolved}`);
 }
