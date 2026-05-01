@@ -72,6 +72,22 @@ test('wrapper source ownership verifier accepts complete canonical source fixtur
   assert.deepEqual(result.failures, []);
 });
 
+test('wrapper repo source ownership proof passes for builder consumption', () => {
+  const repoRoot = path.resolve(import.meta.dirname, '..');
+  const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const result = verifyWrapperSourceOwnership({ root: repoRoot });
+
+  assert.equal(packageJson.scripts['proof:wrapper-source'], 'node scripts/verify-wrapper-source-ownership.mjs');
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.failures, []);
+  assert.deepEqual(result.paths, {
+    androidRoot: 'wrappers/capacitor/android',
+    tauriRoot: 'templates/desktop/tauri',
+    electronRoot: 'templates/desktop/electron',
+    nativeRoot: 'native-service-companions',
+  });
+});
+
 test('wrapper repo publishes canonical Tauri desktop template source', () => {
   const repoRoot = path.resolve(import.meta.dirname, '..');
   for (const relativePath of [

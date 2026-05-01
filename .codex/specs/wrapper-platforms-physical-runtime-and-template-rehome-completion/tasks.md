@@ -37,7 +37,7 @@
   - Add tests that parse metadata and fail when active canonical paths point to placeholder-only folders.
   - _Requirements: 4.1, 4.2, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 7. Add parity-oriented wrapper source proof for builder consumption.
+- [x] 7. Add parity-oriented wrapper source proof for builder consumption.
   - Add a wrapper-local command or test fixture that proves canonical Android, Tauri, Electron, and native companion source roots are present for builder consumption.
   - Ensure the proof can be called by builder tests without requiring a device/emulator.
   - Ensure the proof fails if the repo regresses to the seed 03 placeholder-only state.

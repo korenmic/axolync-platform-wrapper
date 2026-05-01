@@ -4,7 +4,8 @@
   "scripts": {
     "stage:assets": "node scripts/stage-browser-assets.mjs",
     "test": "node --test tests/*.test.mjs",
-    "prepare:ios": "node scripts/prepare-ios-workspace.mjs"
+    "prepare:ios": "node scripts/prepare-ios-workspace.mjs",
+    "proof:wrapper-source": "node scripts/verify-wrapper-source-ownership.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",
