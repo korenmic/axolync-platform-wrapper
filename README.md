@@ -4,6 +4,8 @@ Target wrapper authority: `axolync-platform-wrapper`.
 
 This checkout is still named `axolync-android-wrapper` during rename/refactor migration. Treat the old name as a compatibility alias only. See [docs/wrapper-platform-authority.md](docs/wrapper-platform-authority.md) and [config/wrapper-authority.json](config/wrapper-authority.json).
 
+Soft completion is not accepted for this migration. The repo must physically own the active Capacitor Android source, desktop Tauri template, desktop Electron template, and generic native service companion host sources before builder can treat the migration as complete.
+
 ## Migration Status
 
 This README describes the active Capacitor-based Android host introduced by Migration 05.
@@ -14,7 +16,7 @@ This README describes the active Capacitor-based Android host introduced by Migr
 
 Treat the embedded-server architecture as archived legacy behavior. The active host path in this repository is now the thin Capacitor shell described below.
 
-Android is one child target under the Capacitor wrapper family. Repo-level docs should describe the neutral platform-wrapper authority; Android-specific runtime notes belong under `wrappers/capacitor/android/`.
+Android is one child target under the Capacitor wrapper family. Desktop Tauri and Electron templates are sibling wrapper sources under `templates/desktop/`. Repo-level docs should describe the neutral platform-wrapper authority; Android-specific runtime notes belong under `wrappers/capacitor/android/`.
 
 ## What This Project Does
 
@@ -26,7 +28,7 @@ Android is one child target under the Capacitor wrapper family. Repo-level docs 
 
 ## Runtime Flow
 
-1. Builder/browser outputs are staged into `app/src/main/assets/public`.
+1. Builder/browser outputs are staged into `wrappers/capacitor/android/app/src/main/assets/public`.
 2. `MainActivity` launches as a Capacitor `BridgeActivity`.
 3. Capacitor loads the staged web app assets directly from the packaged host shell.
 4. Browser JS runs in the mobile host baseline without requiring `AndroidBridge`, a localhost server, or embedded Python in the active path.
@@ -35,14 +37,17 @@ Android is one child target under the Capacitor wrapper family. Repo-level docs 
 
 - `config/wrapper-authority.json` - target wrapper authority identity and compatibility alias policy
 - `docs/wrapper-platform-authority.md` - promotion/rename policy for `axolync-platform-wrapper`
-- `app/src/main/kotlin/com/axolync/android/`
+- `wrappers/capacitor/android/app/src/main/kotlin/com/axolync/android/`
   - `activities/MainActivity.kt` - thin Capacitor host activity
-- `app/src/main/res/`
+- `wrappers/capacitor/android/app/src/main/res/`
   - `xml/config.xml` - Capacitor host config
   - `xml/file_paths.xml` - file-provider compatibility config
-- `app/src/main/assets/public/` - staged browser build used by the Capacitor host
-- `app/src/main/assets/capacitor/` - checked-in Capacitor asset metadata
-- `scripts/stage-browser-assets.mjs` - stages browser outputs into Capacitor assets
+- `wrappers/capacitor/android/app/src/main/assets/public/` - staged browser build used by the Capacitor host
+- `wrappers/capacitor/android/app/src/main/assets/capacitor/` - checked-in Capacitor asset metadata
+- `templates/desktop/tauri/` - builder-consumable Tauri desktop wrapper source
+- `templates/desktop/electron/` - builder-consumable Electron desktop wrapper source
+- `native-service-companions/` - generic companion host protocol, deployment, and diagnostics ownership
+- `wrappers/capacitor/android/scripts/stage-browser-assets.mjs` - stages browser outputs into Capacitor assets
 - `deprecated/.kiro/specs/android-apk-wrapper/` - archived pre-Capacitor localhost-era requirements/design/tasks
 
 ## Build and Test
@@ -52,6 +57,7 @@ Android is one child target under the Capacitor wrapper family. Repo-level docs 
 npm ci --no-fund --no-audit
 
 # Unit tests
+cd wrappers/capacitor/android
 ./gradlew :app:testNormalDebugUnitTest
 
 # Build both normal + demo debug APKs
@@ -59,8 +65,8 @@ npm ci --no-fund --no-audit
 ```
 
 APK output:
-- `app/build/outputs/apk/normal/debug/app-normal-debug.apk`
-- `app/build/outputs/apk/demo/debug/app-demo-debug.apk`
+- `wrappers/capacitor/android/app/build/outputs/apk/normal/debug/app-normal-debug.apk`
+- `wrappers/capacitor/android/app/build/outputs/apk/demo/debug/app-demo-debug.apk`
 
 ## Debug Signing Stability
 

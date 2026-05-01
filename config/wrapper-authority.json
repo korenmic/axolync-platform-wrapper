@@ -3,14 +3,39 @@
   "currentPhysicalRepo": "axolync-android-wrapper",
   "migrationMode": "rename-refactor-source",
   "compatibilityAlias": "axolync-android-wrapper",
-  "activeWrapperFamilies": ["capacitor"],
+  "activeWrapperFamilies": ["capacitor", "tauri", "electron"],
   "activePlatformPaths": {
     "capacitorAndroid": "wrappers/capacitor/android",
     "capacitorShared": "wrappers/capacitor/shared",
-    "capacitorIosPlaceholder": "wrappers/capacitor/ios"
+    "capacitorIosPlaceholder": "wrappers/capacitor/ios",
+    "tauriDesktopTemplate": "templates/desktop/tauri",
+    "electronDesktopTemplate": "templates/desktop/electron",
+    "nativeServiceCompanionHostProtocol": "native-service-companions/host-protocol"
+  },
+  "completionPolicy": {
+    "softCompletionRejected": true,
+    "physicalOwnershipRequired": true,
+    "requiredCanonicalSources": [
+      "wrappers/capacitor/android/app/build.gradle.kts",
+      "wrappers/capacitor/android/app/src/main/AndroidManifest.xml",
+      "wrappers/capacitor/android/app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt",
+      "wrappers/capacitor/android/app/src/main/kotlin/com/axolync/android/bridge/AxolyncNativeServiceCompanionHostPlugin.kt",
+      "templates/desktop/tauri/src-tauri/Cargo.toml",
+      "templates/desktop/tauri/src-tauri/src/native_service_companion.rs",
+      "templates/desktop/electron/main.cjs",
+      "templates/desktop/electron/nativeServiceCompanionHost.cjs",
+      "native-service-companions/host-protocol/capability-states.json"
+    ],
+    "forbiddenCompletionSignals": [
+      "placeholder-only directories",
+      "metadata-only aliases",
+      "builder-local runtime template fallback",
+      "documentation without physical source movement"
+    ]
   },
   "removalCriteria": [
     "builder resolves axolync-platform-wrapper directly",
+    "builder consumes Tauri and Electron templates from the wrapper authority",
     "Android build/report parity is proven from wrappers/capacitor/android",
     "no builder or bootstrap docs require axolync-android-wrapper as the runtime authority"
   ]

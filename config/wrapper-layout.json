@@ -36,6 +36,22 @@
         "authorityPath": "wrappers/capacitor/ios",
         "support": "placeholder-only"
       }
+    },
+    "tauri": {
+      "root": "templates/desktop/tauri",
+      "desktop": {
+        "authorityPath": "templates/desktop/tauri",
+        "templateRoot": "templates/desktop/tauri",
+        "nativeServiceCompanionHost": "templates/desktop/tauri/src-tauri/src/native_service_companion.rs"
+      }
+    },
+    "electron": {
+      "root": "templates/desktop/electron",
+      "desktop": {
+        "authorityPath": "templates/desktop/electron",
+        "templateRoot": "templates/desktop/electron",
+        "nativeServiceCompanionHost": "templates/desktop/electron/nativeServiceCompanionHost.cjs"
+      }
     }
   }
 }

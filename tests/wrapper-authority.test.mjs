@@ -13,8 +13,15 @@ test('wrapper authority config names the target platform wrapper and temporary A
   assert.equal(authority.currentPhysicalRepo, 'axolync-android-wrapper');
   assert.equal(authority.migrationMode, 'rename-refactor-source');
   assert.equal(authority.compatibilityAlias, 'axolync-android-wrapper');
-  assert.deepEqual(authority.activeWrapperFamilies, ['capacitor']);
+  assert.deepEqual(authority.activeWrapperFamilies, ['capacitor', 'tauri', 'electron']);
   assert.equal(authority.activePlatformPaths.capacitorAndroid, 'wrappers/capacitor/android');
+  assert.equal(authority.activePlatformPaths.tauriDesktopTemplate, 'templates/desktop/tauri');
+  assert.equal(authority.activePlatformPaths.electronDesktopTemplate, 'templates/desktop/electron');
+  assert.equal(authority.completionPolicy.softCompletionRejected, true);
+  assert.match(
+    authority.completionPolicy.forbiddenCompletionSignals.join('\n'),
+    /builder-local runtime template fallback/,
+  );
   assert.match(
     authority.removalCriteria.join('\n'),
     /builder resolves axolync-platform-wrapper directly/,

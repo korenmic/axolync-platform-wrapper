@@ -9,9 +9,15 @@ This checkout is currently still physically named `axolync-android-wrapper`. Tre
 - Target authority: `axolync-platform-wrapper`
 - Current physical checkout: `axolync-android-wrapper`
 - Active mode: `rename-refactor-source`
-- Active wrapper family: Capacitor
+- Active wrapper families: Capacitor, Tauri, Electron
 - Active Android target path: `wrappers/capacitor/android`
+- Active desktop Tauri template path: `templates/desktop/tauri`
+- Active desktop Electron template path: `templates/desktop/electron`
 - iOS state: placeholder only, no build support is claimed by this repo yet
+
+## Completion Policy
+
+This migration is complete only when the active runtime/template source is physically present in this wrapper authority and builder consumes that source directly. Metadata, compatibility aliases, placeholder directories, quarantine ledgers, or docs-only changes are not valid completion signals.
 
 ## Compatibility Policy
 

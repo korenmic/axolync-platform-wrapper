@@ -28,6 +28,7 @@ test('repo-level identity describes the platform-wrapper migration source, not a
   assert.match(readme.split(/\r?\n/u)[0], /Platform Wrapper Migration Source/);
   assert.match(readme, /Target wrapper authority: `axolync-platform-wrapper`/);
   assert.match(readme, /Android is one child target under the Capacitor wrapper family/);
+  assert.match(readme, /Soft completion is not accepted/);
   assert.doesNotMatch(readme.split(/\r?\n/u)[0], /Android Wrapper/);
 });
 
@@ -35,6 +36,7 @@ test('shared wrapper authority docs keep Android-specific details under capacito
   const authority = read('docs/wrapper-platform-authority.md');
   const androidReadme = read('wrappers/capacitor/android/README.md');
   assert.match(authority, /Use `wrappers\/capacitor\/android\/` for Android host details/);
+  assert.match(authority, /metadata, compatibility aliases, placeholder directories, quarantine ledgers, or docs-only changes are not valid completion signals/i);
   assert.match(authority, /compatibility alias can be removed after builder resolves `axolync-platform-wrapper` directly/);
   assert.match(androidReadme, /Do not add new shared wrapper concepts directly under Android-only paths/);
 });

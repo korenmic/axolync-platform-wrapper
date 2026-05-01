@@ -31,7 +31,7 @@
   - Add tests or fixtures proving wrapper source owns host glue without duplicating addon payloads.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 5.4_
 
-- [ ] 6. Update wrapper authority metadata and documentation to reject soft completion.
+- [x] 6. Update wrapper authority metadata and documentation to reject soft completion.
   - Update `config/wrapper-layout.json`, authority docs, and wrapper README content to identify canonical active source, shims, placeholders, and historical compatibility names.
   - Document that README-only folders, config aliases, and quarantine ledgers are not valid completion for physical source ownership.
   - Add tests that parse metadata and fail when active canonical paths point to placeholder-only folders.
