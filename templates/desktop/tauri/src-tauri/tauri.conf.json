@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Axolync Desktop",
+  "version": "0.0.0",
+  "identifier": "com.axolync.desktop",
+  "build": {
+    "frontendDist": "../app"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Axolync Desktop",
+        "width": 1280,
+        "height": 800,
+        "zoomHotkeysEnabled": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": false
+  }
+}

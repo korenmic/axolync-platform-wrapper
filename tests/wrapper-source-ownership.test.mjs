@@ -71,3 +71,16 @@ test('wrapper source ownership verifier accepts complete canonical source fixtur
   assert.equal(result.ok, true);
   assert.deepEqual(result.failures, []);
 });
+
+test('wrapper repo publishes canonical Tauri desktop template source', () => {
+  const repoRoot = path.resolve(import.meta.dirname, '..');
+  for (const relativePath of [
+    'templates/desktop/tauri/package.json',
+    'templates/desktop/tauri/src-tauri/Cargo.toml',
+    'templates/desktop/tauri/src-tauri/tauri.conf.json',
+    'templates/desktop/tauri/src-tauri/src/main.rs',
+    'templates/desktop/tauri/src-tauri/src/native_service_companion.rs',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), true, `missing ${relativePath}`);
+  }
+});

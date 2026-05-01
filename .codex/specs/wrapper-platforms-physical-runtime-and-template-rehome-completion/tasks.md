@@ -13,7 +13,7 @@
   - Update wrapper layout metadata to identify canonical source paths and shim paths separately.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 5.5, 6.2, 6.3_
 
-- [ ] 3. Publish canonical desktop Tauri template source in the wrapper repo.
+- [x] 3. Publish canonical desktop Tauri template source in the wrapper repo.
   - Add the active Tauri desktop template/source currently required for generated desktop artifacts under a wrapper-owned canonical path.
   - Include required Tauri package/config/source files and native companion host integration points.
   - Add tests that fail if the Tauri template is missing or placeholder-only.

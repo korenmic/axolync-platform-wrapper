@@ -1,0 +1,6 @@
+{
+  "name": "axolync-desktop-tauri-host",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Builder-owned Tauri desktop host workspace template"
+}
