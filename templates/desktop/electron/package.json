@@ -1,0 +1,15 @@
+{
+  "name": "axolync-desktop-electron-host",
+  "private": true,
+  "version": "0.0.0",
+  "main": "main.cjs",
+  "type": "commonjs",
+  "description": "Builder-owned Electron desktop host workspace template",
+  "scripts": {
+    "build:portable": "electron-packager . \"Axolync Desktop Electron\" --out dist-packager --overwrite --prune=true"
+  },
+  "devDependencies": {
+    "electron": "41.1.0",
+    "electron-packager": "17.1.2"
+  }
+}

@@ -19,7 +19,7 @@
   - Add tests that fail if the Tauri template is missing or placeholder-only.
   - _Requirements: 2.1, 2.3, 2.4, 3.1, 5.2, 6.1_
 
-- [ ] 4. Publish canonical desktop Electron template source in the wrapper repo.
+- [x] 4. Publish canonical desktop Electron template source in the wrapper repo.
   - Add the active Electron desktop template/source currently required for generated desktop artifacts under a wrapper-owned canonical path.
   - Include required Electron package/main/preload/native companion host files.
   - Add tests that fail if the Electron template is missing or placeholder-only.

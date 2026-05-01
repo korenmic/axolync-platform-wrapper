@@ -84,3 +84,15 @@ test('wrapper repo publishes canonical Tauri desktop template source', () => {
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), true, `missing ${relativePath}`);
   }
 });
+
+test('wrapper repo publishes canonical Electron desktop template source', () => {
+  const repoRoot = path.resolve(import.meta.dirname, '..');
+  for (const relativePath of [
+    'templates/desktop/electron/package.json',
+    'templates/desktop/electron/main.cjs',
+    'templates/desktop/electron/preload.cjs',
+    'templates/desktop/electron/nativeServiceCompanionHost.cjs',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), true, `missing ${relativePath}`);
+  }
+});
