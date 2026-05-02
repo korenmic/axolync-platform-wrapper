@@ -44,7 +44,7 @@
   - Track any remaining `axolync-android-wrapper` references as compatibility aliases only.
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.3_
 
-- [ ] 7. Preserve defaults override behavior across topology migration.
+- [x] 7. Preserve defaults override behavior across topology migration.
   - Update any wrapper default-loading paths affected by the move without changing priority order.
   - Add or update tests proving builder overrides stay above wrapper TOML, wrapper constants, browser config defaults, and browser runtime defaults.
   - Ensure wrapper topology metadata does not force browser or addons to learn typed wrapper paths.

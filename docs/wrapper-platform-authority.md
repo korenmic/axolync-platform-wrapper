@@ -28,3 +28,15 @@ The compatibility alias can be removed after builder resolves `axolync-platform-
 ## Android-Specific Scope
 
 Use `wrappers/mobile/capacitor/android/` for Android host details. Shared host protocol, deployment, diagnostics, and wrapper defaults belong under `wrappers/mobile/capacitor/shared/` or `native-service-companions/` so future Tauri, Electron, and iOS work does not inherit Android-only ownership names.
+
+## Default Authority
+
+Wrapper topology must not make browser or addon code learn where wrapper source lives. Build-time consumers may override wrapper defaults, but missing values fall through in this order:
+
+1. builder TOML
+2. wrapper TOML
+3. wrapper source defaults
+4. browser build config defaults
+5. browser runtime defaults
+
+Wrapper defaults are scoped to wrapper behavior only. Browser and addon defaults remain owned by their own repositories unless builder explicitly overrides them while producing an artifact.
