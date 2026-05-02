@@ -1,8 +1,8 @@
-# Axolync Platform Wrapper Migration Source
+# Axolync Platform Wrapper
 
 Target wrapper authority: `axolync-platform-wrapper`.
 
-This checkout is still named `axolync-android-wrapper` during rename/refactor migration. Treat the old name as a compatibility alias only. See [docs/wrapper-platform-authority.md](docs/wrapper-platform-authority.md) and [config/wrapper-authority.json](config/wrapper-authority.json).
+The old `axolync-android-wrapper` name is a compatibility alias only. See [docs/wrapper-platform-authority.md](docs/wrapper-platform-authority.md) and [config/wrapper-authority.json](config/wrapper-authority.json).
 
 Soft completion is not accepted for this migration. The repo must physically own the active Capacitor Android source, desktop Tauri template, desktop Electron template, and generic native service companion host sources before builder can treat the migration as complete.
 

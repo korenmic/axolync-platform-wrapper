@@ -35,7 +35,7 @@
   - Document that top-level `templates/` is not an active wrapper ownership domain.
   - _Requirements: 3.3, 4.1, 4.2, 4.3, 4.4, 6.4, 8.1, 8.2, 8.3_
 
-- [ ] 6. Perform and verify repo identity cutover to `axolync-platform-wrapper`.
+- [x] 6. Perform and verify repo identity cutover to `axolync-platform-wrapper`.
   - Update wrapper repo docs and bootstrap references owned by this repo to use `axolync-platform-wrapper` as the final repo identity.
   - Add a small verification script or documented command that checks the expected final Git remote URL and local folder identity after rename.
   - Rename the GitHub repository from `axolync-android-wrapper` to `axolync-platform-wrapper` when credentials/tooling allow it, preserving history instead of creating a new unrelated repo.

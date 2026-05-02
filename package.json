@@ -1,5 +1,5 @@
 {
-  "name": "axolync-android-wrapper",
+  "name": "axolync-platform-wrapper",
   "private": true,
   "scripts": {
     "stage:assets": "node scripts/stage-browser-assets.mjs",
@@ -7,7 +7,8 @@
     "prepare:ios": "node scripts/prepare-ios-workspace.mjs",
     "proof:wrapper-source": "node scripts/verify-wrapper-source-ownership.mjs",
     "proof:wrapper-topology": "node scripts/verify-wrapper-typed-topology.mjs",
-    "proof:wrapper": "npm run proof:wrapper-source && npm run proof:wrapper-topology"
+    "proof:wrapper-identity": "node scripts/verify-wrapper-identity.mjs",
+    "proof:wrapper": "npm run proof:wrapper-source && npm run proof:wrapper-topology && npm run proof:wrapper-identity"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",

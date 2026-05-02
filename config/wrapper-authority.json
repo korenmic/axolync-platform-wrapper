@@ -1,7 +1,7 @@
 {
   "targetRepo": "axolync-platform-wrapper",
-  "currentPhysicalRepo": "axolync-android-wrapper",
-  "migrationMode": "rename-refactor-source",
+  "currentPhysicalRepo": "axolync-platform-wrapper",
+  "migrationMode": "final-authority",
   "compatibilityAlias": "axolync-android-wrapper",
   "activeWrapperFamilies": ["capacitor", "tauri", "electron"],
   "activePlatformPaths": {

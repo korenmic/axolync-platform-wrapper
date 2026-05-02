@@ -10,8 +10,8 @@ test('wrapper authority config names the target platform wrapper and temporary A
   const authority = JSON.parse(fs.readFileSync(authorityPath, 'utf8'));
 
   assert.equal(authority.targetRepo, 'axolync-platform-wrapper');
-  assert.equal(authority.currentPhysicalRepo, 'axolync-android-wrapper');
-  assert.equal(authority.migrationMode, 'rename-refactor-source');
+  assert.equal(authority.currentPhysicalRepo, 'axolync-platform-wrapper');
+  assert.equal(authority.migrationMode, 'final-authority');
   assert.equal(authority.compatibilityAlias, 'axolync-android-wrapper');
   assert.deepEqual(authority.activeWrapperFamilies, ['capacitor', 'tauri', 'electron']);
   assert.equal(authority.activePlatformPaths.capacitorAndroid, 'wrappers/mobile/capacitor/android');

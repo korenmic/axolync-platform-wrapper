@@ -2,13 +2,13 @@
 
 `axolync-platform-wrapper` is the target source-of-truth identity for Axolync wrapper runtime code.
 
-This checkout is currently still physically named `axolync-android-wrapper`. Treat that name as a temporary compatibility alias while the repo is promoted by rename/refactor. It must not become a permanent second source of wrapper runtime truth.
+The old `axolync-android-wrapper` name is a compatibility alias only. It must not become a permanent second source of wrapper runtime truth.
 
 ## Active Migration Mode
 
 - Target authority: `axolync-platform-wrapper`
-- Current physical checkout: `axolync-android-wrapper`
-- Active mode: `rename-refactor-source`
+- Current physical checkout: `axolync-platform-wrapper`
+- Active mode: `final-authority`
 - Active wrapper families: Capacitor, Tauri, Electron
 - Active Android target path: `wrappers/mobile/capacitor/android`
 - Active desktop Tauri template path: `wrappers/desktop/tauri/workspace-template`
