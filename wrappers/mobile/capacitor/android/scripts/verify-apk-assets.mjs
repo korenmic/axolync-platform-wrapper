@@ -61,12 +61,6 @@ function commandAvailable(commandName) {
 }
 
 function readZipEntry(apkPath, entryPath) {
-  if (commandAvailable('unzip')) {
-    return execFileSync('unzip', ['-p', apkPath, entryPath], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-  }
   if (process.platform === 'win32') {
     return execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ZIP_READ_POWERSHELL], {
       encoding: 'utf8',
@@ -76,6 +70,12 @@ function readZipEntry(apkPath, entryPath) {
         AXOLYNC_ARCHIVE_PATH: apkPath,
         AXOLYNC_ARCHIVE_ENTRY: entryPath,
       },
+    });
+  }
+  if (commandAvailable('unzip')) {
+    return execFileSync('unzip', ['-p', apkPath, entryPath], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
   }
   return execFileSync('unzip', ['-p', apkPath, entryPath], {
@@ -97,12 +97,6 @@ function assertExcludes(haystack, needle, message) {
 }
 
 function listZipEntries(apkPath) {
-  if (commandAvailable('unzip')) {
-    return execFileSync('unzip', ['-Z1', apkPath], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    }).split('\n').map((line) => line.trim()).filter(Boolean);
-  }
   if (process.platform === 'win32') {
     return execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ZIP_LIST_POWERSHELL], {
       encoding: 'utf8',
@@ -112,6 +106,12 @@ function listZipEntries(apkPath) {
         AXOLYNC_ARCHIVE_PATH: apkPath,
       },
     }).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  }
+  if (commandAvailable('unzip')) {
+    return execFileSync('unzip', ['-Z1', apkPath], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).split('\n').map((line) => line.trim()).filter(Boolean);
   }
   return execFileSync('unzip', ['-Z1', apkPath], {
     encoding: 'utf8',
