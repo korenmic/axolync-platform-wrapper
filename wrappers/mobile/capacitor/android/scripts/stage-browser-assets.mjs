@@ -155,7 +155,7 @@ export function resolveCapacitorAndroidLayout(options = {}) {
   return {
     layoutPath,
     compatibilityMode: layout?.compatibilityMode === true,
-    authorityPath: android.authorityPath ?? 'wrappers/capacitor/android',
+    authorityPath: android.authorityPath ?? 'wrappers/mobile/capacitor/android',
     publicDir: path.join(root, assetPublicPath),
     assetsRoot: path.join(root, assetsRootPath),
     gradleProjectPath: android.gradleProjectPath ?? 'app',

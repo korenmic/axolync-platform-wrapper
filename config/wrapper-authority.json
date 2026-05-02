@@ -5,9 +5,9 @@
   "compatibilityAlias": "axolync-android-wrapper",
   "activeWrapperFamilies": ["capacitor", "tauri", "electron"],
   "activePlatformPaths": {
-    "capacitorAndroid": "wrappers/capacitor/android",
-    "capacitorShared": "wrappers/capacitor/shared",
-    "capacitorIosPlaceholder": "wrappers/capacitor/ios",
+    "capacitorAndroid": "wrappers/mobile/capacitor/android",
+    "capacitorShared": "wrappers/mobile/capacitor/shared",
+    "capacitorIosPlaceholder": "wrappers/mobile/capacitor/ios",
     "tauriDesktopTemplate": "templates/desktop/tauri",
     "electronDesktopTemplate": "templates/desktop/electron",
     "nativeServiceCompanionHostProtocol": "native-service-companions/host-protocol"
@@ -16,10 +16,10 @@
     "softCompletionRejected": true,
     "physicalOwnershipRequired": true,
     "requiredCanonicalSources": [
-      "wrappers/capacitor/android/app/build.gradle.kts",
-      "wrappers/capacitor/android/app/src/main/AndroidManifest.xml",
-      "wrappers/capacitor/android/app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt",
-      "wrappers/capacitor/android/app/src/main/kotlin/com/axolync/android/bridge/AxolyncNativeServiceCompanionHostPlugin.kt",
+      "wrappers/mobile/capacitor/android/app/build.gradle.kts",
+      "wrappers/mobile/capacitor/android/app/src/main/AndroidManifest.xml",
+      "wrappers/mobile/capacitor/android/app/src/main/kotlin/com/axolync/android/activities/MainActivity.kt",
+      "wrappers/mobile/capacitor/android/app/src/main/kotlin/com/axolync/android/bridge/AxolyncNativeServiceCompanionHostPlugin.kt",
       "templates/desktop/tauri/src-tauri/Cargo.toml",
       "templates/desktop/tauri/src-tauri/src/native_service_companion.rs",
       "templates/desktop/electron/main.cjs",
@@ -36,7 +36,7 @@
   "removalCriteria": [
     "builder resolves axolync-platform-wrapper directly",
     "builder consumes Tauri and Electron templates from the wrapper authority",
-    "Android build/report parity is proven from wrappers/capacitor/android",
+    "Android build/report parity is proven from wrappers/mobile/capacitor/android",
     "no builder or bootstrap docs require axolync-android-wrapper as the runtime authority"
   ]
 }

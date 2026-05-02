@@ -13,13 +13,13 @@ test('wrapper layout exposes Capacitor Android under the neutral wrapper-family 
 
   assert.equal(layout.targetRepo, 'axolync-platform-wrapper');
   assert.equal(layout.compatibilityMode, false);
-  assert.equal(android.authorityPath, 'wrappers/capacitor/android');
-  assert.equal(android.projectRoot, 'wrappers/capacitor/android');
-  assert.equal(android.gradleProjectPath, 'wrappers/capacitor/android/app');
+  assert.equal(android.authorityPath, 'wrappers/mobile/capacitor/android');
+  assert.equal(android.projectRoot, 'wrappers/mobile/capacitor/android');
+  assert.equal(android.gradleProjectPath, 'wrappers/mobile/capacitor/android/app');
   assert.equal(android.legacyCompatibilityMode, 'root-shim');
   assert.equal(fs.existsSync(path.join(repoRoot, android.authorityPath, 'app', 'build.gradle.kts')), true);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'wrappers', 'capacitor', 'shared', 'README.md')), true);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'wrappers', 'capacitor', 'ios', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'wrappers', 'mobile', 'capacitor', 'shared', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'wrappers', 'mobile', 'capacitor', 'ios', 'README.md')), true);
 });
 
 test('promoted layout canonical path points at required Android and Capacitor build files', () => {

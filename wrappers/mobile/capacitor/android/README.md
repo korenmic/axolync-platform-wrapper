@@ -8,4 +8,4 @@ During compatibility mode, active Gradle files and Android sources remain at the
 - Kotlin host source: `app/src/main/kotlin/com/axolync/android/`
 - staged browser assets: `app/src/main/assets/public/`
 
-Do not add new shared wrapper concepts directly under Android-only paths. Shared bridge, diagnostics, deployment, and defaults belong in `wrappers/capacitor/shared/` or `native-service-companions/`.
+Do not add new shared wrapper concepts directly under Android-only paths. Shared bridge, diagnostics, deployment, and defaults belong in `wrappers/mobile/capacitor/shared/` or `native-service-companions/`.

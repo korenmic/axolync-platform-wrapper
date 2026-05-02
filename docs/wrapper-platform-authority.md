@@ -10,7 +10,7 @@ This checkout is currently still physically named `axolync-android-wrapper`. Tre
 - Current physical checkout: `axolync-android-wrapper`
 - Active mode: `rename-refactor-source`
 - Active wrapper families: Capacitor, Tauri, Electron
-- Active Android target path: `wrappers/capacitor/android`
+- Active Android target path: `wrappers/mobile/capacitor/android`
 - Active desktop Tauri template path: `templates/desktop/tauri`
 - Active desktop Electron template path: `templates/desktop/electron`
 - iOS state: placeholder only, no build support is claimed by this repo yet
@@ -27,4 +27,4 @@ The compatibility alias can be removed after builder resolves `axolync-platform-
 
 ## Android-Specific Scope
 
-Use `wrappers/capacitor/android/` for Android host details. Shared host protocol, deployment, diagnostics, and wrapper defaults belong under `wrappers/capacitor/shared/` or `native-service-companions/` so future Tauri, Electron, and iOS work does not inherit Android-only ownership names.
+Use `wrappers/mobile/capacitor/android/` for Android host details. Shared host protocol, deployment, diagnostics, and wrapper defaults belong under `wrappers/mobile/capacitor/shared/` or `native-service-companions/` so future Tauri, Electron, and iOS work does not inherit Android-only ownership names.

@@ -10,13 +10,13 @@
   },
   "families": {
     "capacitor": {
-      "root": "wrappers/capacitor",
+      "root": "wrappers/mobile/capacitor",
       "android": {
-        "authorityPath": "wrappers/capacitor/android",
-        "projectRoot": "wrappers/capacitor/android",
-        "gradleProjectPath": "wrappers/capacitor/android/app",
-        "assetPublicPath": "wrappers/capacitor/android/app/src/main/assets/public",
-        "nativeSourcePath": "wrappers/capacitor/android/app/src/main/kotlin/com/axolync/android",
+        "authorityPath": "wrappers/mobile/capacitor/android",
+        "projectRoot": "wrappers/mobile/capacitor/android",
+        "gradleProjectPath": "wrappers/mobile/capacitor/android/app",
+        "assetPublicPath": "wrappers/mobile/capacitor/android/app/src/main/assets/public",
+        "nativeSourcePath": "wrappers/mobile/capacitor/android/app/src/main/kotlin/com/axolync/android",
         "legacyCompatibilityProjectRoot": ".",
         "legacyCompatibilityMode": "root-shim",
         "legacyShimPaths": [
@@ -30,10 +30,10 @@
         ]
       },
       "shared": {
-        "authorityPath": "wrappers/capacitor/shared"
+        "authorityPath": "wrappers/mobile/capacitor/shared"
       },
       "ios": {
-        "authorityPath": "wrappers/capacitor/ios",
+        "authorityPath": "wrappers/mobile/capacitor/ios",
         "support": "placeholder-only"
       }
     },

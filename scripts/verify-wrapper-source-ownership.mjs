@@ -41,14 +41,14 @@ export function verifyWrapperSourceOwnership({
   const layout = readJson(layoutPath);
   const android = layout?.families?.capacitor?.android ?? {};
   const ios = layout?.families?.capacitor?.ios ?? {};
-  const androidRoot = path.join(root, android.authorityPath ?? 'wrappers/capacitor/android');
+  const androidRoot = path.join(root, android.authorityPath ?? 'wrappers/mobile/capacitor/android');
   const tauriRoot = path.join(root, 'templates', 'desktop', 'tauri');
   const electronRoot = path.join(root, 'templates', 'desktop', 'electron');
   const nativeRoot = path.join(root, 'native-service-companions');
   const failures = [];
 
   if (!hasNonReadmeFile(androidRoot)) {
-    failures.push('wrappers/capacitor/android is placeholder-only; canonical Android source is missing');
+    failures.push('wrappers/mobile/capacitor/android is placeholder-only; canonical Android source is missing');
   }
 
   assertFiles(androidRoot, [
@@ -80,7 +80,7 @@ export function verifyWrapperSourceOwnership({
   ], 'native companion host source', failures);
 
   if (ios.support !== 'placeholder-only') {
-    failures.push('wrappers/capacitor/ios must remain placeholder-only until a separate runnable iOS seed proves support');
+    failures.push('wrappers/mobile/capacitor/ios must remain placeholder-only until a separate runnable iOS seed proves support');
   }
 
   return {

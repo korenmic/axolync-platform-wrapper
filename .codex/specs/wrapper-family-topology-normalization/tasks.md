@@ -7,7 +7,7 @@
   - Assert repo identity docs/config name `axolync-platform-wrapper` as final authority and treat `axolync-android-wrapper` only as transitional.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.3, 4.4, 5.5, 6.1, 6.2, 6.3_
 
-- [ ] 2. Move Capacitor source into the typed mobile wrapper topology.
+- [x] 2. Move Capacitor source into the typed mobile wrapper topology.
   - Move active `wrappers/capacitor/android` source to `wrappers/mobile/capacitor/android`.
   - Move or create shared and iOS placeholder paths under `wrappers/mobile/capacitor/shared` and `wrappers/mobile/capacitor/ios`.
   - Convert any old `wrappers/capacitor/*` path to a temporary compatibility shim or remove it if builder no longer needs it.

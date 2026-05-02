@@ -43,7 +43,7 @@ test('resolveCapacitorAndroidLayout preserves asset staging through wrapper-fami
       families: {
         capacitor: {
           android: {
-            authorityPath: 'wrappers/capacitor/android',
+            authorityPath: 'wrappers/mobile/capacitor/android',
             assetPublicPath: 'app/src/main/assets/public',
             gradleProjectPath: 'app',
             nativeSourcePath: 'app/src/main/kotlin/com/axolync/android',
@@ -55,7 +55,7 @@ test('resolveCapacitorAndroidLayout preserves asset staging through wrapper-fami
     const layout = resolveCapacitorAndroidLayout({ repoRoot: tempRoot });
 
     assert.equal(layout.compatibilityMode, true);
-    assert.equal(layout.authorityPath, 'wrappers/capacitor/android');
+    assert.equal(layout.authorityPath, 'wrappers/mobile/capacitor/android');
     assert.equal(layout.publicDir, path.join(tempRoot, 'app', 'src', 'main', 'assets', 'public'));
     assert.equal(layout.assetsRoot, path.join(tempRoot, 'app', 'src', 'main', 'assets'));
   } finally {
@@ -118,9 +118,9 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   });
 
   assert.equal(result.publicDir, publicDir);
-  assert.equal(result.wrapperLayout.publicDir, path.join(process.cwd(), 'wrappers', 'capacitor', 'android', 'app', 'src', 'main', 'assets', 'public'));
+  assert.equal(result.wrapperLayout.publicDir, path.join(process.cwd(), 'wrappers', 'mobile', 'capacitor', 'android', 'app', 'src', 'main', 'assets', 'public'));
   assert.equal(result.wrapperLayout.compatibilityMode, false);
-  assert.equal(result.wrapperLayout.authorityPath, 'wrappers/capacitor/android');
+  assert.equal(result.wrapperLayout.authorityPath, 'wrappers/mobile/capacitor/android');
   assert.equal(result.buildFlavor, 'debug');
   assert.equal(result.nativeServiceCompanionAssetsRoot, nativeServiceCompanionAssetsRoot);
   assert.equal(result.capacitorConfig.rootPath, path.join(assetRoot, 'capacitor.config.json'));

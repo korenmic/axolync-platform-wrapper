@@ -34,8 +34,8 @@ test('repo-level identity describes the platform-wrapper migration source, not a
 
 test('shared wrapper authority docs keep Android-specific details under capacitor android paths', () => {
   const authority = read('docs/wrapper-platform-authority.md');
-  const androidReadme = read('wrappers/capacitor/android/README.md');
-  assert.match(authority, /Use `wrappers\/capacitor\/android\/` for Android host details/);
+  const androidReadme = read('wrappers/mobile/capacitor/android/README.md');
+  assert.match(authority, /Use `wrappers\/mobile\/capacitor\/android\/` for Android host details/);
   assert.match(authority, /metadata, compatibility aliases, placeholder directories, quarantine ledgers, or docs-only changes are not valid completion signals/i);
   assert.match(authority, /compatibility alias can be removed after builder resolves `axolync-platform-wrapper` directly/);
   assert.match(androidReadme, /Do not add new shared wrapper concepts directly under Android-only paths/);
@@ -43,7 +43,7 @@ test('shared wrapper authority docs keep Android-specific details under capacito
 
 test('shared wrapper source areas do not claim Android-only repo ownership', () => {
   const sharedFiles = [
-    ...listFiles('wrappers/capacitor/shared'),
+    ...listFiles('wrappers/mobile/capacitor/shared'),
     ...listFiles('native-service-companions'),
   ];
   assert.ok(sharedFiles.length > 0);
