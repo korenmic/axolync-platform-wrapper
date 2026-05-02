@@ -21,7 +21,7 @@
   - Update tests and metadata so only `wrappers/desktop/tauri/...` is canonical.
   - _Requirements: 1.2, 1.3, 1.4, 3.1, 3.3, 3.4, 4.1, 4.3, 6.1, 6.2_
 
-- [ ] 4. Move Electron source into the typed desktop wrapper topology.
+- [x] 4. Move Electron source into the typed desktop wrapper topology.
   - Move active Electron source from top-level `templates/desktop/electron` into `wrappers/desktop/electron/workspace-template`.
   - Preserve Electron native companion host integration points under the Electron wrapper root or a clearly named nested role folder.
   - Remove or quarantine the old top-level Electron template path so it cannot pass as active source.

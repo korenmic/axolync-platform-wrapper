@@ -46,11 +46,11 @@
       }
     },
     "electron": {
-      "root": "templates/desktop/electron",
+      "root": "wrappers/desktop/electron/workspace-template",
       "desktop": {
-        "authorityPath": "templates/desktop/electron",
-        "templateRoot": "templates/desktop/electron",
-        "nativeServiceCompanionHost": "templates/desktop/electron/nativeServiceCompanionHost.cjs"
+        "authorityPath": "wrappers/desktop/electron/workspace-template",
+        "templateRoot": "wrappers/desktop/electron/workspace-template",
+        "nativeServiceCompanionHost": "wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs"
       }
     }
   }

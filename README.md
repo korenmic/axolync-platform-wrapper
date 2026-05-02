@@ -45,7 +45,7 @@ Android is one child target under the Capacitor wrapper family. Desktop Tauri an
 - `wrappers/mobile/capacitor/android/app/src/main/assets/public/` - staged browser build used by the Capacitor host
 - `wrappers/mobile/capacitor/android/app/src/main/assets/capacitor/` - checked-in Capacitor asset metadata
 - `wrappers/desktop/tauri/workspace-template/` - builder-consumable Tauri desktop wrapper source
-- `templates/desktop/electron/` - builder-consumable Electron desktop wrapper source
+- `wrappers/desktop/electron/workspace-template/` - builder-consumable Electron desktop wrapper source
 - `native-service-companions/` - generic companion host protocol, deployment, and diagnostics ownership
 - `wrappers/mobile/capacitor/android/scripts/stage-browser-assets.mjs` - stages browser outputs into Capacitor assets
 - `deprecated/.kiro/specs/android-apk-wrapper/` - archived pre-Capacitor localhost-era requirements/design/tasks

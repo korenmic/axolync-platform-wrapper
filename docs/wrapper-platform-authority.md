@@ -12,7 +12,7 @@ This checkout is currently still physically named `axolync-android-wrapper`. Tre
 - Active wrapper families: Capacitor, Tauri, Electron
 - Active Android target path: `wrappers/mobile/capacitor/android`
 - Active desktop Tauri template path: `wrappers/desktop/tauri/workspace-template`
-- Active desktop Electron template path: `templates/desktop/electron`
+- Active desktop Electron template path: `wrappers/desktop/electron/workspace-template`
 - iOS state: placeholder only, no build support is claimed by this repo yet
 
 ## Completion Policy

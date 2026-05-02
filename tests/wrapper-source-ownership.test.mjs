@@ -54,10 +54,10 @@ test('wrapper source ownership verifier accepts complete canonical source fixtur
     'wrappers/desktop/tauri/workspace-template/src-tauri/Cargo.toml',
     'wrappers/desktop/tauri/workspace-template/src-tauri/tauri.conf.json',
     'wrappers/desktop/tauri/workspace-template/src-tauri/src/main.rs',
-    'templates/desktop/electron/package.json',
-    'templates/desktop/electron/main.cjs',
-    'templates/desktop/electron/preload.cjs',
-    'templates/desktop/electron/nativeServiceCompanionHost.cjs',
+    'wrappers/desktop/electron/workspace-template/package.json',
+    'wrappers/desktop/electron/workspace-template/main.cjs',
+    'wrappers/desktop/electron/workspace-template/preload.cjs',
+    'wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs',
     'native-service-companions/host-protocol/capability-states.json',
     'native-service-companions/deployment/README.md',
     'native-service-companions/diagnostics/README.md',
@@ -83,7 +83,7 @@ test('wrapper repo source ownership proof passes for builder consumption', () =>
   assert.deepEqual(result.paths, {
     androidRoot: 'wrappers/mobile/capacitor/android',
     tauriRoot: 'wrappers/desktop/tauri/workspace-template',
-    electronRoot: 'templates/desktop/electron',
+    electronRoot: 'wrappers/desktop/electron/workspace-template',
     nativeRoot: 'native-service-companions',
   });
 });
@@ -104,10 +104,10 @@ test('wrapper repo publishes canonical Tauri desktop template source', () => {
 test('wrapper repo publishes canonical Electron desktop template source', () => {
   const repoRoot = path.resolve(import.meta.dirname, '..');
   for (const relativePath of [
-    'templates/desktop/electron/package.json',
-    'templates/desktop/electron/main.cjs',
-    'templates/desktop/electron/preload.cjs',
-    'templates/desktop/electron/nativeServiceCompanionHost.cjs',
+    'wrappers/desktop/electron/workspace-template/package.json',
+    'wrappers/desktop/electron/workspace-template/main.cjs',
+    'wrappers/desktop/electron/workspace-template/preload.cjs',
+    'wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs',
   ]) {
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), true, `missing ${relativePath}`);
   }
@@ -118,7 +118,7 @@ test('wrapper-owned native companion host source remains generic and payload-fre
   const ownedHostFiles = [
     'native-service-companions/host-protocol/capability-states.json',
     'wrappers/desktop/tauri/workspace-template/src-tauri/src/native_service_companion.rs',
-    'templates/desktop/electron/nativeServiceCompanionHost.cjs',
+    'wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs',
     'wrappers/mobile/capacitor/android/app/src/main/kotlin/com/axolync/android/bridge/AxolyncNativeServiceCompanionHostPlugin.kt',
   ];
   const combined = ownedHostFiles

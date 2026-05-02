@@ -9,7 +9,7 @@
     "capacitorShared": "wrappers/mobile/capacitor/shared",
     "capacitorIosPlaceholder": "wrappers/mobile/capacitor/ios",
     "tauriDesktopTemplate": "wrappers/desktop/tauri/workspace-template",
-    "electronDesktopTemplate": "templates/desktop/electron",
+    "electronDesktopTemplate": "wrappers/desktop/electron/workspace-template",
     "nativeServiceCompanionHostProtocol": "native-service-companions/host-protocol"
   },
   "completionPolicy": {
@@ -22,8 +22,8 @@
       "wrappers/mobile/capacitor/android/app/src/main/kotlin/com/axolync/android/bridge/AxolyncNativeServiceCompanionHostPlugin.kt",
       "wrappers/desktop/tauri/workspace-template/src-tauri/Cargo.toml",
       "wrappers/desktop/tauri/workspace-template/src-tauri/src/native_service_companion.rs",
-      "templates/desktop/electron/main.cjs",
-      "templates/desktop/electron/nativeServiceCompanionHost.cjs",
+      "wrappers/desktop/electron/workspace-template/main.cjs",
+      "wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs",
       "native-service-companions/host-protocol/capability-states.json"
     ],
     "forbiddenCompletionSignals": [
