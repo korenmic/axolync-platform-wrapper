@@ -18,7 +18,7 @@
   - Add tests proving generated outputs are not consumed repos.
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 4. Add browser-agnostic guardrails for wrapper descriptor work.
+- [x] 4. Add browser-agnostic guardrails for wrapper descriptor work.
   - Add tests or scans proving browser does not read `exports.wrapper_topology` or wrapper-specific platform fields.
   - Ensure platform-wrapper consumption of browser does not require browser to know wrapper internals.
   - _Requirements: 4.1, 4.2, 4.3_
