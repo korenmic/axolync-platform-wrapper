@@ -49,6 +49,40 @@ path = "wrappers/desktop/electron"
 workspace_template_path = "wrappers/desktop/electron/workspace-template"
 native_companion_path = "wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs"
 
+[[exports.generated_outputs]]
+name = "capacitor-android-workspace"
+kind = "workspace"
+path = "wrappers/mobile/capacitor/android"
+platform = "capacitor"
+
+[[exports.generated_outputs]]
+name = "capacitor-public-assets"
+kind = "copied-asset"
+path = "wrappers/mobile/capacitor/android/app/src/main/assets/public"
+platform = "capacitor"
+
+[[exports.generated_outputs]]
+name = "tauri-workspace-template"
+kind = "template"
+path = "wrappers/desktop/tauri/workspace-template"
+platform = "tauri"
+
+[[exports.generated_outputs]]
+name = "electron-workspace-template"
+kind = "template"
+path = "wrappers/desktop/electron/workspace-template"
+platform = "electron"
+
+[[exports.generated_outputs]]
+name = "native-service-companion-host-protocol"
+kind = "native-payload"
+path = "native-service-companions/host-protocol"
+
+[[exports.generated_outputs]]
+name = "native-service-companion-deployment"
+kind = "generated-asset"
+path = "native-service-companions/deployment"
+
 [[consumes.repos]]
 id = "axolync-contract"
 use = "schema-and-runtime-contracts"

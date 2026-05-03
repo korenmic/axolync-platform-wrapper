@@ -64,3 +64,26 @@ test('platform-wrapper descriptor exports dedicated canonical wrapper topology',
     }
   }
 });
+
+test('platform-wrapper descriptor models generated wrapper outputs as exports only', () => {
+  const descriptor = contract.loadRepoDescriptorFile(resolve(repoRoot, 'axolync.repo.toml')).descriptor;
+  const generatedOutputs = descriptor.exports.generated_outputs;
+
+  assert.deepEqual(
+    generatedOutputs.map((output) => [output.name, output.kind, output.path]),
+    [
+      ['capacitor-android-workspace', 'workspace', 'wrappers/mobile/capacitor/android'],
+      ['capacitor-public-assets', 'copied-asset', 'wrappers/mobile/capacitor/android/app/src/main/assets/public'],
+      ['tauri-workspace-template', 'template', 'wrappers/desktop/tauri/workspace-template'],
+      ['electron-workspace-template', 'template', 'wrappers/desktop/electron/workspace-template'],
+      ['native-service-companion-host-protocol', 'native-payload', 'native-service-companions/host-protocol'],
+      ['native-service-companion-deployment', 'generated-asset', 'native-service-companions/deployment']
+    ]
+  );
+
+  const consumedIds = descriptor.consumes.repos.map((repo) => repo.id);
+  for (const output of generatedOutputs) {
+    assert.equal(consumedIds.includes(output.path), false);
+    assert.equal(consumedIds.includes(output.name), false);
+  }
+});

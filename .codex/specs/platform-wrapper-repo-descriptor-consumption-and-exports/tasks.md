@@ -13,7 +13,7 @@
   - Add tests proving paths follow `wrappers/<type>/<wrapper_name>/...`.
   - _Requirements: 1.2, 1.3, 1.4_
 
-- [ ] 3. Model generated wrapper outputs as descriptor exports.
+- [x] 3. Model generated wrapper outputs as descriptor exports.
   - Declare workspace templates, native-service-companion outputs, and wrapper-generated payloads as exports.
   - Add tests proving generated outputs are not consumed repos.
   - _Requirements: 2.1, 2.2, 2.3_
