@@ -39,3 +39,28 @@ test('platform-wrapper descriptor declares required contract and browser depende
     }
   ]);
 });
+
+test('platform-wrapper descriptor exports dedicated canonical wrapper topology', () => {
+  const descriptor = contract.loadRepoDescriptorFile(resolve(repoRoot, 'axolync.repo.toml')).descriptor;
+  const topology = descriptor.exports.wrapper_topology;
+
+  assert.equal(topology.authority, 'config/wrapper-layout.json');
+  assert.deepEqual(
+    topology.families.map((family) => [family.type, family.name, family.path]),
+    [
+      ['mobile', 'capacitor', 'wrappers/mobile/capacitor'],
+      ['desktop', 'tauri', 'wrappers/desktop/tauri'],
+      ['desktop', 'electron', 'wrappers/desktop/electron']
+    ]
+  );
+
+  for (const family of topology.families) {
+    assert.match(family.path, new RegExp(`^wrappers/${family.type}/${family.name}`));
+    if (family.workspace_template_path) {
+      assert.match(family.workspace_template_path, new RegExp(`^wrappers/${family.type}/${family.name}/`));
+    }
+    if (family.native_companion_path) {
+      assert.match(family.native_companion_path, new RegExp(`^wrappers/${family.type}/${family.name}/`));
+    }
+  }
+});

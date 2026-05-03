@@ -7,7 +7,7 @@
   - Add descriptor validation tests.
   - _Requirements: 1.1, 3.1, 3.2, 3.4_
 
-- [ ] 2. Implement dedicated wrapper topology export.
+- [x] 2. Implement dedicated wrapper topology export.
   - Add `exports.wrapper_topology` or descriptor-referenced topology config.
   - Include desktop Tauri, desktop Electron, and mobile Capacitor canonical paths.
   - Add tests proving paths follow `wrappers/<type>/<wrapper_name>/...`.

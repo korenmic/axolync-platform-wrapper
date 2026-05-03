@@ -25,6 +25,30 @@ smoke = "npm run proof:wrapper"
 bootstrap = ["README.md"]
 standards = ["config/wrapper-layout.json"]
 
+[exports.wrapper_topology]
+authority = "config/wrapper-layout.json"
+
+[[exports.wrapper_topology.families]]
+type = "mobile"
+name = "capacitor"
+path = "wrappers/mobile/capacitor"
+project_root = "wrappers/mobile/capacitor/android"
+native_companion_path = "wrappers/mobile/capacitor/android/app/src/main/kotlin/com/axolync/android"
+
+[[exports.wrapper_topology.families]]
+type = "desktop"
+name = "tauri"
+path = "wrappers/desktop/tauri"
+workspace_template_path = "wrappers/desktop/tauri/workspace-template"
+native_companion_path = "wrappers/desktop/tauri/workspace-template/src-tauri/src/native_service_companion.rs"
+
+[[exports.wrapper_topology.families]]
+type = "desktop"
+name = "electron"
+path = "wrappers/desktop/electron"
+workspace_template_path = "wrappers/desktop/electron/workspace-template"
+native_companion_path = "wrappers/desktop/electron/workspace-template/nativeServiceCompanionHost.cjs"
+
 [[consumes.repos]]
 id = "axolync-contract"
 use = "schema-and-runtime-contracts"
