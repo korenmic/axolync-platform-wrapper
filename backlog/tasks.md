@@ -39,7 +39,7 @@
   - Keep an explicit environment escape hatch for local diagnostics.
   - Add wrapper-level proof that the hardening runs before Electron readiness.
 
-- [ ] Diagnose and fix stale browser asset embedding in desktop portable artifacts.
+- [x] Diagnose and fix stale browser asset embedding in desktop portable artifacts.
   - Reproduce the mirror case where server/APK artifacts contained transform runtime strings while the desktop portable executable did not.
   - Identify whether the desktop wrapper consumes stale browser build output, a stale submodule/symlink, or a builder copy step that bypasses the current generated server assets.
   - Make desktop portable builds consume the same current browser runtime bundle and preinstall assets as the artifact profile requests.
