@@ -46,7 +46,7 @@
   - If an actual wrapper runtime gap is found, fix it in the wrapper repo rather than masking it in browser or LRCLIB addon code.
   - Ensure unsupported browser/web hosts remain truthfully unsupported while Tauri/Capacitor wrappers expose actionable diagnostics for bridge, route, DB deploy, and server startup failures.
 
-- [ ] Diagnose and fix stale browser asset embedding in desktop portable artifacts.
+- [x] Diagnose and fix stale browser asset embedding in desktop portable artifacts.
   - Reproduce the mirror case where server/APK artifacts contained transform runtime strings while the desktop portable executable did not.
   - Identify whether the desktop wrapper consumes stale browser build output, a stale submodule/symlink, or a builder copy step that bypasses the current generated server assets.
   - Make desktop portable builds consume the same current browser runtime bundle and preinstall assets as the artifact profile requests.
