@@ -21,6 +21,6 @@
   - Keep Electron on web/no-op fallback unless native proof shows bridge work is required.
   - Document the result in wrapper notes/tests.
 
-- [ ] 5. Validate Platform Wrapper notification bridge
+- [x] 5. Validate Platform Wrapper notification bridge
   - Run focused wrapper tests for capability and bridge behavior.
   - Run relevant platform-wrapper validation for touched files.
