@@ -1,6 +1,6 @@
 # Tasks
 
-- [ ] 1. Define native live notification bridge capability shape
+- [x] 1. Define native live notification bridge capability shape
   - Add or document the runtime host bridge methods and result contracts.
   - Include capability metadata for permission, silent, buzz, replace, and clear.
   - Test safe absent/degraded capability reporting.
