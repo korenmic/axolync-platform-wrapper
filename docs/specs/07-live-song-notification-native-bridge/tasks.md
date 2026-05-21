@@ -5,7 +5,7 @@
   - Include capability metadata for permission, silent, buzz, replace, and clear.
   - Test safe absent/degraded capability reporting.
 
-- [ ] 2. Add Capacitor Android native notification support
+- [x] 2. Add Capacitor Android native notification support
   - Wire Local Notifications or equivalent native implementation.
   - Configure quiet detection and silent buzz-ready behavior, using two channels if required.
   - Return structured success/degraded/failure results.
