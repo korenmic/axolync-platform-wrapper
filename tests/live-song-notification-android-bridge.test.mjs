@@ -52,4 +52,7 @@ test('live song notification bridge contract is documented for wrapper implement
   assert.match(docs, /clearLiveSongNotification/);
   assert.match(docs, /silent=true/);
   assert.match(docs, /buzz=true/);
+  assert.match(docs, /Capacitor Android publishes `AxolyncLiveSongNotification`/);
+  assert.match(docs, /Tauri desktop does not currently publish a native notification command/);
+  assert.match(docs, /Electron is not an active release artifact today/);
 });

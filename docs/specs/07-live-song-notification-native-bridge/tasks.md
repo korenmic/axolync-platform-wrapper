@@ -11,7 +11,7 @@
   - Return structured success/degraded/failure results.
   - Add focused tests or documented native proof for channel/capability behavior.
 
-- [ ] 3. Add or validate Tauri desktop notification bridge
+- [x] 3. Add or validate Tauri desktop notification bridge
   - Use the active Tauri notification plugin/bridge where available.
   - Expose capability metadata to Browser.
   - Add tests or documented proof for supported/degraded desktop behavior.

@@ -38,3 +38,9 @@ type NotificationTransportResult = {
 - Lyric-ready notifications use `silent=true` and `buzz=true`.
 - Wrappers should replace by stable `id` so only one live song notification is visible.
 - Wrappers should return `degraded` rather than throwing when a platform lacks buzz, explicit clear, or a permission prompt path.
+
+## Platform Status
+
+- Capacitor Android publishes `AxolyncLiveSongNotification` as a native plugin and owns permission, channels, buzz, replacement, and clear.
+- Tauri desktop does not currently publish a native notification command or plugin in the wrapper template. The Browser Web Notification transport is the intentional fallback for desktop until a dedicated Tauri notification command is added.
+- Electron is not an active release artifact today. If it is revived, it should either rely on Web Notifications or publish the same bridge contract explicitly.
