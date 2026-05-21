@@ -16,7 +16,7 @@
   - Expose capability metadata to Browser.
   - Add tests or documented proof for supported/degraded desktop behavior.
 
-- [ ] 4. Decide Electron fallback boundary
+- [x] 4. Decide Electron fallback boundary
   - Verify whether current Electron/EXE artifacts exist and whether web notifications are sufficient.
   - Keep Electron on web/no-op fallback unless native proof shows bridge work is required.
   - Document the result in wrapper notes/tests.

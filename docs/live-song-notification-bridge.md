@@ -44,3 +44,7 @@ type NotificationTransportResult = {
 - Capacitor Android publishes `AxolyncLiveSongNotification` as a native plugin and owns permission, channels, buzz, replacement, and clear.
 - Tauri desktop does not currently publish a native notification command or plugin in the wrapper template. The Browser Web Notification transport is the intentional fallback for desktop until a dedicated Tauri notification command is added.
 - Electron is not an active release artifact today. If it is revived, it should either rely on Web Notifications or publish the same bridge contract explicitly.
+
+## Electron Boundary
+
+Do not add Electron-only native notification code until Electron artifacts are active again. The current supported boundary is Browser Web Notifications or an explicit future implementation of the same host-bridge methods above.
