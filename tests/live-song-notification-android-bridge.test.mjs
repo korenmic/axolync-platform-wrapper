@@ -74,4 +74,5 @@ test('Tauri live song notification bridge is published in the desktop wrapper te
   assert.match(source, /pub fn axolync_live_song_notification_show/);
   assert.match(source, /pub fn axolync_live_song_notification_clear/);
   assert.match(source, /axolync_live_song_notification_show,/);
+  assert.match(source, /Windows portable artifact cannot display Tauri native notifications/);
 });

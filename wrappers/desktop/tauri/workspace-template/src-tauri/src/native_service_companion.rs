@@ -1764,6 +1764,18 @@ fn chrono_like_now_ms() -> i64 {
 }
 
 fn live_song_notification_capabilities() -> LiveSongNotificationCapabilities {
+    if cfg!(target_os = "windows") {
+        return LiveSongNotificationCapabilities {
+            supports_permission_request: false,
+            supports_silent: false,
+            supports_buzz: false,
+            supports_replace: false,
+            supports_clear: false,
+            degraded_reasons: vec![String::from(
+                "Tauri Windows notifications require an installed app; portable ZIP artifacts cannot display native toasts.",
+            )],
+        };
+    }
     LiveSongNotificationCapabilities {
         supports_permission_request: true,
         // The Tauri Rust plugin exposes show/permission/silent cleanly. Buzz and explicit
@@ -1806,6 +1818,15 @@ pub fn axolync_live_song_notification_request_permission(
     reason: String,
     app: tauri::AppHandle,
 ) -> NotificationPermissionResult {
+    if cfg!(target_os = "windows") {
+        return NotificationPermissionResult {
+            state: String::from("unsupported"),
+            reason: Some(format!(
+                "Windows portable artifact cannot request notification permission for {}; installable Tauri bundles are required for native toasts.",
+                reason
+            )),
+        };
+    }
     let current = match app.notification().permission_state() {
         Ok(state) => state,
         Err(error) => {
@@ -1847,6 +1868,14 @@ pub fn axolync_live_song_notification_show(
     app: tauri::AppHandle,
     input: LiveSongNotificationInput,
 ) -> NotificationTransportResult {
+    if cfg!(target_os = "windows") {
+        return NotificationTransportResult {
+            status: String::from("unsupported"),
+            reason: Some(String::from(
+                "Windows portable artifact cannot display Tauri native notifications; use an installed Tauri bundle or a dedicated Windows toast bridge.",
+            )),
+        };
+    }
     let should_silent = input.silent;
     let should_buzz = input.buzz;
     let notification_id = stable_live_song_notification_id(&input.id);
