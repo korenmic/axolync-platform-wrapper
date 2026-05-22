@@ -53,7 +53,25 @@ test('live song notification bridge contract is documented for wrapper implement
   assert.match(docs, /silent=true/);
   assert.match(docs, /buzz=true/);
   assert.match(docs, /Capacitor Android publishes `AxolyncLiveSongNotification`/);
-  assert.match(docs, /Tauri desktop does not currently publish a native notification command/);
+  assert.match(docs, /Tauri desktop publishes the same bridge through global Tauri invoke commands/);
+  assert.match(docs, /tauri-plugin-notification/);
   assert.match(docs, /Electron is not an active release artifact today/);
   assert.match(docs, /Do not add Electron-only native notification code until Electron artifacts are active again/);
+});
+
+test('Tauri live song notification bridge is published in the desktop wrapper template', () => {
+  const tauriRoot = path.join(repoRoot, 'wrappers/desktop/tauri/workspace-template/src-tauri');
+  const cargoToml = fs.readFileSync(path.join(tauriRoot, 'Cargo.toml'), 'utf8');
+  const tauriConfig = fs.readFileSync(path.join(tauriRoot, 'tauri.conf.json'), 'utf8');
+  const source = fs.readFileSync(path.join(tauriRoot, 'src/native_service_companion.rs'), 'utf8');
+
+  assert.match(cargoToml, /tauri-plugin-notification = "2"/);
+  assert.equal(JSON.parse(tauriConfig).app.withGlobalTauri, true);
+  assert.match(source, /use tauri_plugin_notification::\{NotificationExt, PermissionState\}/);
+  assert.match(source, /\.plugin\(tauri_plugin_notification::init\(\)\)/);
+  assert.match(source, /pub fn axolync_live_song_notification_get_capabilities/);
+  assert.match(source, /pub fn axolync_live_song_notification_request_permission/);
+  assert.match(source, /pub fn axolync_live_song_notification_show/);
+  assert.match(source, /pub fn axolync_live_song_notification_clear/);
+  assert.match(source, /axolync_live_song_notification_show,/);
 });

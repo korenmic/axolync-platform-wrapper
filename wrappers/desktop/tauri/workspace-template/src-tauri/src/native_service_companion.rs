@@ -14,6 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use tauri_plugin_notification::{NotificationExt, PermissionState};
 use url::Url;
 use uuid::Uuid;
 use zip::ZipArchive;
@@ -90,6 +91,46 @@ struct NativeDiagnosticEnvelope {
     #[serde(rename = "collectionMethod")]
     collection_method: String,
     logs: Vec<Value>,
+}
+
+#[derive(Clone, Serialize)]
+struct LiveSongNotificationCapabilities {
+    #[serde(rename = "supportsPermissionRequest")]
+    supports_permission_request: bool,
+    #[serde(rename = "supportsSilent")]
+    supports_silent: bool,
+    #[serde(rename = "supportsBuzz")]
+    supports_buzz: bool,
+    #[serde(rename = "supportsReplace")]
+    supports_replace: bool,
+    #[serde(rename = "supportsClear")]
+    supports_clear: bool,
+    #[serde(rename = "degradedReasons")]
+    degraded_reasons: Vec<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct NotificationPermissionResult {
+    state: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct NotificationTransportResult {
+    status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
+}
+
+#[derive(Clone, Deserialize)]
+struct LiveSongNotificationInput {
+    id: String,
+    phase: String,
+    title: String,
+    body: String,
+    silent: bool,
+    buzz: bool,
 }
 
 #[derive(Clone, Deserialize)]
@@ -1722,6 +1763,140 @@ fn chrono_like_now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+fn live_song_notification_capabilities() -> LiveSongNotificationCapabilities {
+    LiveSongNotificationCapabilities {
+        supports_permission_request: true,
+        // The Tauri Rust plugin exposes show/permission/silent cleanly. Buzz and explicit
+        // active-toast clearing are not guaranteed by that API across desktop hosts.
+        supports_silent: true,
+        supports_buzz: false,
+        supports_replace: true,
+        supports_clear: false,
+        degraded_reasons: vec![String::from(
+            "Tauri desktop notifications cannot guarantee buzz or explicit active clear.",
+        )],
+    }
+}
+
+fn browser_permission_state(state: PermissionState) -> &'static str {
+    match state {
+        PermissionState::Granted => "granted",
+        PermissionState::Denied => "denied",
+        PermissionState::Prompt | PermissionState::PromptWithRationale => "prompt",
+    }
+}
+
+fn stable_live_song_notification_id(id: &str) -> i32 {
+    let mut hash: u32 = 0x811c9dc5;
+    for byte in id.as_bytes() {
+        hash ^= u32::from(*byte);
+        hash = hash.wrapping_mul(0x01000193);
+    }
+    (hash & 0x7fff_ffff) as i32
+}
+
+#[tauri::command]
+pub fn axolync_live_song_notification_get_capabilities() -> LiveSongNotificationCapabilities {
+    live_song_notification_capabilities()
+}
+
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn axolync_live_song_notification_request_permission(
+    reason: String,
+    app: tauri::AppHandle,
+) -> NotificationPermissionResult {
+    let current = match app.notification().permission_state() {
+        Ok(state) => state,
+        Err(error) => {
+            return NotificationPermissionResult {
+                state: String::from("unsupported"),
+                reason: Some(format!(
+                    "Failed to read notification permission for {}: {}",
+                    reason, error
+                )),
+            };
+        }
+    };
+    let resolved = if current == PermissionState::Prompt
+        || current == PermissionState::PromptWithRationale
+    {
+        match app.notification().request_permission() {
+            Ok(state) => state,
+            Err(error) => {
+                return NotificationPermissionResult {
+                    state: String::from("denied"),
+                    reason: Some(format!(
+                        "Failed to request notification permission for {}: {}",
+                        reason, error
+                    )),
+                };
+            }
+        }
+    } else {
+        current
+    };
+    NotificationPermissionResult {
+        state: String::from(browser_permission_state(resolved)),
+        reason: None,
+    }
+}
+
+#[tauri::command]
+pub fn axolync_live_song_notification_show(
+    app: tauri::AppHandle,
+    input: LiveSongNotificationInput,
+) -> NotificationTransportResult {
+    let should_silent = input.silent;
+    let should_buzz = input.buzz;
+    let notification_id = stable_live_song_notification_id(&input.id);
+    let mut builder = app
+        .notification()
+        .builder()
+        .id(notification_id)
+        .title(input.title)
+        .body(input.body)
+        .extra("phase", input.phase)
+        .extra("axolync_live_song_notification_id", input.id);
+    if should_silent {
+        builder = builder.silent();
+    }
+    match builder.show() {
+        Ok(()) => {
+            if should_buzz {
+                NotificationTransportResult {
+                    status: String::from("degraded"),
+                    reason: Some(String::from(
+                        "Tauri desktop notification was posted, but buzz behavior is platform-dependent.",
+                    )),
+                }
+            } else {
+                NotificationTransportResult {
+                    status: String::from("success"),
+                    reason: None,
+                }
+            }
+        }
+        Err(error) => NotificationTransportResult {
+            status: String::from("failed"),
+            reason: Some(error.to_string()),
+        },
+    }
+}
+
+#[tauri::command]
+pub fn axolync_live_song_notification_clear(
+    id: String,
+) -> NotificationTransportResult {
+    NotificationTransportResult {
+        status: String::from("degraded"),
+        reason: Some(format!(
+            "Tauri desktop notification clear is unavailable through the Rust notification API for {}.",
+            id
+        )),
+    }
+}
+
 #[allow(non_snake_case)]
 #[tauri::command]
 pub fn axolync_native_service_companion_get_status(
@@ -1794,8 +1969,13 @@ pub fn axolync_native_service_companion_get_diagnostics(
 
 pub fn build_tauri_app() -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .manage(NativeCompanionHostState::load())
         .invoke_handler(tauri::generate_handler![
+            axolync_live_song_notification_get_capabilities,
+            axolync_live_song_notification_request_permission,
+            axolync_live_song_notification_show,
+            axolync_live_song_notification_clear,
             axolync_native_service_companion_get_status,
             axolync_native_service_companion_set_enabled,
             axolync_native_service_companion_start,
