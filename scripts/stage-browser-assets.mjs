@@ -26,6 +26,10 @@ const CAPACITOR_NATIVE_BRIDGE_PLUGIN_REGISTRY = Object.freeze([
     classpath: 'com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin',
   }),
   Object.freeze({
+    pkg: 'axolync-live-song-notification',
+    classpath: 'com.axolync.android.bridge.AxolyncLiveSongNotificationPlugin',
+  }),
+  Object.freeze({
     pkg: 'axolync-native-bridge-host',
     classpath: 'com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin',
   }),
