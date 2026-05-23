@@ -54,3 +54,4 @@ app/src/main/assets/capacitor.config.json
 # Generated physical-device validation outputs
 tests/output/
 .env
+*~
