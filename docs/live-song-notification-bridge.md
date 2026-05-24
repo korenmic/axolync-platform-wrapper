@@ -1,6 +1,6 @@
 # Live Song Notification Bridge
 
-The Browser runtime consumes live song notifications through the runtime host bridge. Wrappers may expose native notification behavior by publishing these methods on the host bridge or a platform plugin that the Browser adapter composes into the host bridge.
+The Browser runtime consumes live song notifications through the runtime host bridge. Wrappers expose native notification behavior by publishing these methods on the host bridge; Browser must not import or directly discover wrapper-specific notification plugins.
 
 ## Contract
 
@@ -41,7 +41,7 @@ type NotificationTransportResult = {
 
 ## Platform Status
 
-- Capacitor Android publishes `AxolyncLiveSongNotification` as a native plugin and owns permission, channels, buzz, replacement, and clear.
+- Capacitor Android publishes these host-bridge methods from Platform Wrapper staging code and backs them with the official Capacitor `LocalNotifications` plugin. The old custom `AxolyncLiveSongNotification` plugin is not a supported source of truth.
 - Tauri desktop publishes the same bridge through global Tauri invoke commands and the native `tauri-plugin-notification` plugin. It owns permission and native toast posting where the host supports it. Windows portable ZIP artifacts must report notification delivery as unsupported because Tauri's notification plugin only displays native Windows toasts for installed apps. Buzz, fully silent delivery, and explicit active-toast clearing are reported as degraded when the platform/API cannot guarantee them.
 - Electron is not an active release artifact today. If it is revived, it should either rely on Web Notifications or publish the same bridge contract explicitly.
 

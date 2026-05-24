@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import com.axolync.android.R
 import com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin
-import com.axolync.android.bridge.AxolyncLiveSongNotificationPlugin
 import com.axolync.android.bridge.AxolyncNativeServiceCompanionHostPlugin
 import com.getcapacitor.BridgeActivity
 
@@ -20,7 +19,6 @@ class MainActivity : BridgeActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(AxolyncDebugArchiveSavePlugin::class.java)
-        registerPlugin(AxolyncLiveSongNotificationPlugin::class.java)
         registerPlugin(AxolyncNativeServiceCompanionHostPlugin::class.java)
         super.onCreate(savedInstanceState)
         installAndroidTextSelectionPolicy()

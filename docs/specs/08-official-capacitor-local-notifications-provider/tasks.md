@@ -13,7 +13,7 @@
   - Preserve existing runtime host bridge capabilities such as debug archive save.
   - Add diagnostics for provider kind, bootstrap state, permission result, show result, clear result, and fallback reason.
 
-- [ ] 3. Remove the custom Android live notification plugin source of truth
+- [x] 3. Remove the custom Android live notification plugin source of truth
   - Remove or stop registering `AxolyncLiveSongNotificationPlugin` from Android runtime and staged registry output.
   - Remove Browser direct discovery of the custom `AxolyncLiveSongNotification` Capacitor plugin.
   - Update Platform Wrapper docs/tests to describe official Local Notifications provider behavior.
