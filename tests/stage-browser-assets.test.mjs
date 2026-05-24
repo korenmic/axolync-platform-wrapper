@@ -158,6 +158,17 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST__/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedDebugIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
+  assert.match(stagedDebugIndex, /LIVE_NOTIFICATION_PROVIDER_KIND = 'capacitor-local-notifications'/);
+  assert.match(stagedDebugIndex, /window\.Capacitor\.Plugins\.LocalNotifications/);
+  assert.match(stagedDebugIndex, /nativePromise\('LocalNotifications', methodName, payload \|\| \{\}\)/);
+  assert.match(stagedDebugIndex, /invokeLocalNotifications\('checkPermissions', \{\}\)/);
+  assert.match(stagedDebugIndex, /invokeLocalNotifications\('requestPermissions', \{\}\)/);
+  assert.match(stagedDebugIndex, /invokeLocalNotifications\('createChannel'/);
+  assert.match(stagedDebugIndex, /invokeLocalNotifications\('schedule'/);
+  assert.match(stagedDebugIndex, /liveSongNotificationProviderKind: LIVE_NOTIFICATION_PROVIDER_KIND/);
+  assert.match(stagedDebugIndex, /getLiveSongNotificationCapabilities/);
+  assert.match(stagedDebugIndex, /showLiveSongNotification/);
+  assert.match(stagedDebugIndex, /clearLiveSongNotification/);
   assert.match(stagedDebugIndex, /BRIDGE_PUBLICATION = Object\.freeze/);
   assert.match(stagedDebugIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\/native-bridge\.js'/);
   assert.match(stagedDebugIndex, /publicationMode: 'capacitor-plugin-registry'/);
@@ -279,6 +290,9 @@ test('stageBrowserAssets can stage a release payload without demo assets', () =>
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_NATIVE_SERVICE_COMPANION_HOST_FAMILY = 'capacitor'/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_HOST_BRIDGE__/);
   assert.match(stagedReleaseIndex, /window\.__AXOLYNC_RUNTIME_STATE_RESET_HOST__/);
+  assert.match(stagedReleaseIndex, /LIVE_NOTIFICATION_PROVIDER_KIND = 'capacitor-local-notifications'/);
+  assert.match(stagedReleaseIndex, /window\.Capacitor\.Plugins\.LocalNotifications/);
+  assert.match(stagedReleaseIndex, /liveSongNotificationProviderKind: LIVE_NOTIFICATION_PROVIDER_KIND/);
   assert.match(stagedReleaseIndex, /hostPlatform: 'android'/);
   assert.match(stagedReleaseIndex, /BRIDGE_RUNTIME_SCRIPT_SRC = '\.\/native-bridge\.js'/);
   assert.match(fs.readFileSync(path.join(publicDir, 'native-bridge.js'), 'utf8'), /nativePromise/);

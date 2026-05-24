@@ -6,7 +6,7 @@
   - Keep `POST_NOTIFICATIONS` permission and avoid adding unrelated notification-listener/status-bar permissions.
   - Add or update Platform Wrapper tests proving the official `LocalNotifications` native path is present.
 
-- [ ] 2. Inject a Platform Wrapper Capacitor live notification provider
+- [x] 2. Inject a Platform Wrapper Capacitor live notification provider
   - Add a staged provider script or inline provider that publishes Browser's host-neutral live notification bridge methods.
   - Back permission, show, replace, and clear behavior with official `LocalNotifications` operations.
   - Create quiet detected and lyrics-ready no-sound channels, with lyrics-ready vibration where supported.
