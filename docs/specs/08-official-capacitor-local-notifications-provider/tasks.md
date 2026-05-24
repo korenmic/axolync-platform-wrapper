@@ -25,7 +25,7 @@
   - Update focused Builder tests and failure messages.
   - Keep notification-capture/status-bar validation separate from live-song notification delivery validation.
 
-- [ ] 5. Verify cross-repo notification provider behavior
+- [x] 5. Verify cross-repo notification provider behavior
   - Run focused Browser tests for wrapper/web notification transport behavior.
   - Run focused Platform Wrapper tests for staging, provider injection, source ownership, and wrapper notification bridge docs.
   - Run focused Builder tests for APK notification validation.
