@@ -87,6 +87,7 @@ dependencies {
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("org.brotli:dec:0.1.2")
     implementation(project(":capacitor-android"))
+    implementation(project(":capacitor-local-notifications"))
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test:core:1.5.0")
