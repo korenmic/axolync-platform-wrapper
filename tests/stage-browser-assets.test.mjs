@@ -131,8 +131,8 @@ test('stageBrowserAssets copies demo plugins, demo player, and browser dist payl
       classpath: 'com.axolync.android.bridge.AxolyncDebugArchiveSavePlugin',
     },
     {
-      pkg: 'axolync-live-song-notification',
-      classpath: 'com.axolync.android.bridge.AxolyncLiveSongNotificationPlugin',
+      pkg: '@capacitor/local-notifications',
+      classpath: 'com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin',
     },
     {
       pkg: 'axolync-native-bridge-host',

@@ -1,6 +1,6 @@
 # Tasks
 
-- [ ] 1. Add official Capacitor Local Notifications wiring in Platform Wrapper
+- [x] 1. Add official Capacitor Local Notifications wiring in Platform Wrapper
   - Add `@capacitor/local-notifications` to the Capacitor Android wrapper dependencies at the Capacitor 6-compatible version.
   - Wire the plugin into the manual Android project through Gradle/settings and Capacitor plugin registry evidence.
   - Keep `POST_NOTIFICATIONS` permission and avoid adding unrelated notification-listener/status-bar permissions.
