@@ -19,7 +19,7 @@
   - Update Platform Wrapper docs/tests to describe official Local Notifications provider behavior.
   - Ensure Android notification capture/status-bar code remains separate and unaffected.
 
-- [ ] 4. Update Builder APK validation for official Local Notifications
+- [x] 4. Update Builder APK validation for official Local Notifications
   - Stop requiring `AxolyncLiveSongNotificationPlugin` in APK inspections.
   - Require official `LocalNotifications` plugin registry/dependency evidence and provider-injection evidence instead.
   - Update focused Builder tests and failure messages.
