@@ -35,6 +35,9 @@ private const val UNSUPPORTED_BUNDLE_MESSAGE = "Native bridge is unavailable in 
 private const val MAX_NATIVE_BRIDGE_DIAGNOSTICS = 200
 private const val OPERATOR_KIND_SHAZAM_DISCOVERY = "shazam-discovery-loopback-v1"
 private const val OPERATOR_KIND_LRCLIB_LOCAL = "lrclib-local-loopback-v1"
+private const val CAPTURE_ROUTE_PROVIDER_KIND = "capacitor-android-capture-routes"
+private const val CAPTURE_ROUTE_WRAPPER_MIC = "wrapper-preferred-microphone"
+private const val CAPTURE_ROUTE_WRAPPER_LOOPBACK = "wrapper-loopback"
 private val LOOPBACK_CORS_HEADERS = mapOf(
     "Access-Control-Allow-Origin" to "*",
     "Access-Control-Allow-Methods" to "GET, OPTIONS",
@@ -1067,6 +1070,75 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun getCaptureRouteStatus(call: PluginCall) {
+        appendDiagnostic(
+            source = "capture-route",
+            level = "info",
+            addonId = null,
+            companionId = null,
+            event = "capture-route.status.requested",
+            details = mapOf("providerKind" to CAPTURE_ROUTE_PROVIDER_KIND)
+        )
+        call.resolve(buildCaptureRouteStatusEnvelope())
+    }
+
+    @PluginMethod
+    fun startCaptureRoute(call: PluginCall) {
+        val routeKind = normalizeCaptureRouteKind(call.getString("routeKind"))
+        appendDiagnostic(
+            source = "capture-route",
+            level = "warn",
+            addonId = null,
+            companionId = null,
+            event = "capture-route.start.unavailable",
+            details = mapOf(
+                "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
+                "routeKind" to routeKind,
+                "reason" to "Android capture route implementation is not active in this bundle yet."
+            )
+        )
+        call.resolve(
+            JSObject().apply {
+                put("routeKind", routeKind)
+                put("routeId", JSONObject.NULL)
+                put("sampleRateHz", JSONObject.NULL)
+                put(
+                    "diagnostics",
+                    JSObject().apply {
+                        put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
+                        put("state", "unavailable")
+                        put("reason", "Android capture route implementation is not active in this bundle yet.")
+                    }
+                )
+            }
+        )
+    }
+
+    @PluginMethod
+    fun stopCaptureRoute(call: PluginCall) {
+        val routeKind = normalizeCaptureRouteKind(call.getString("routeKind"))
+        appendDiagnostic(
+            source = "capture-route",
+            level = "info",
+            addonId = null,
+            companionId = null,
+            event = "capture-route.stop.requested",
+            details = mapOf(
+                "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
+                "routeKind" to routeKind,
+                "routeId" to call.getString("routeId")
+            )
+        )
+        call.resolve(
+            JSObject().apply {
+                put("status", "success")
+                put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
+                put("routeKind", routeKind)
+            }
+        )
+    }
+
+    @PluginMethod
     fun setEnabled(call: PluginCall) {
         val addonId = call.getString("addonId").orEmpty()
         val companionId = call.getString("companionId").orEmpty()
@@ -1405,6 +1477,54 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         )
         return envelope
     }
+
+    private fun normalizeCaptureRouteKind(rawRouteKind: String?): String {
+        val normalized = rawRouteKind?.trim().orEmpty()
+        return when (normalized) {
+            CAPTURE_ROUTE_WRAPPER_LOOPBACK -> CAPTURE_ROUTE_WRAPPER_LOOPBACK
+            else -> CAPTURE_ROUTE_WRAPPER_MIC
+        }
+    }
+
+    private fun buildCaptureRouteStatusEnvelope(): JSObject =
+        JSObject().apply {
+            put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
+            put(
+                "capabilities",
+                JSONArray().apply {
+                    put(
+                        JSObject().apply {
+                            put("kind", CAPTURE_ROUTE_WRAPPER_MIC)
+                            put("support", "unavailable")
+                            put("label", "Android native microphone")
+                            put("reason", "Android capture route implementation is not active in this bundle yet.")
+                            put("requiresPermission", true)
+                        }
+                    )
+                    put(
+                        JSObject().apply {
+                            put("kind", CAPTURE_ROUTE_WRAPPER_LOOPBACK)
+                            put("support", "unsupported")
+                            put("label", "Android playback capture")
+                            put("reason", "Android playback capture permission flow is not active in this bundle yet.")
+                            put("requiresPermission", true)
+                        }
+                    )
+                }
+            )
+            put("recommendedRoute", JSONObject.NULL)
+            put("recommendationReason", JSONObject.NULL)
+            put(
+                "diagnostics",
+                JSObject().apply {
+                    put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
+                    put("hostFamily", CAPACITOR_HOST_FAMILY)
+                    put("hostPlatform", CAPACITOR_HOST_PLATFORM)
+                    put("hostAbi", detectHostAbi())
+                    put("generatedAtMs", System.currentTimeMillis())
+                }
+            )
+        }
 
     private fun appendDiagnostic(
         source: String,
