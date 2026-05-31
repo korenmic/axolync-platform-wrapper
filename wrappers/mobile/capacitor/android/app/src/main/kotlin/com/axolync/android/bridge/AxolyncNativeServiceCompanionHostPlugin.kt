@@ -13,6 +13,8 @@ import android.media.MediaRecorder
 import android.net.Uri
 import android.util.Log
 import androidx.car.app.connection.CarConnection
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
 import com.getcapacitor.JSObject
 import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
@@ -1240,6 +1242,11 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     private val diagnostics = mutableListOf<NativeBridgeDiagnosticEntry>()
     private val registrationByKey: MutableMap<String, NativeBridgeRegistration> by lazy { loadRegistrations().toMutableMap() }
     private var captureRouteSession: AndroidAudioCaptureSession? = null
+    private var carConnectionTypeLiveData: LiveData<Int>? = null
+    private var carConnectionObserver: Observer<Int>? = null
+    private var observedAndroidXConnectionType: Int? = null
+    private var observedAndroidXConnectionAtMs: Long? = null
+    private var carConnectionObserverError: String? = null
 
     @PluginMethod
     fun getStatus(call: PluginCall) {
@@ -1691,6 +1698,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        carConnectionObserver?.let { observer ->
+            try {
+                carConnectionTypeLiveData?.removeObserver(observer)
+            } catch (_: Throwable) {
+            }
+        }
+        carConnectionObserver = null
+        carConnectionTypeLiveData = null
         captureRouteSession?.stop()
         captureRouteSession = null
         runtimeOperators.values.forEach { it.stop() }
@@ -1793,13 +1808,40 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             "Android playback capture requires Android 10/API 29 or newer."
         }
 
+    private fun ensureCarConnectionObserver() {
+        if (carConnectionObserver != null) {
+            return
+        }
+        try {
+            val liveData = CarConnection(context).type
+            val observer = Observer<Int> { value ->
+                observedAndroidXConnectionType = value
+                observedAndroidXConnectionAtMs = System.currentTimeMillis()
+            }
+            liveData.observeForever(observer)
+            carConnectionTypeLiveData = liveData
+            carConnectionObserver = observer
+            observedAndroidXConnectionType = liveData.value
+            observedAndroidXConnectionAtMs = if (liveData.value != null) System.currentTimeMillis() else null
+            carConnectionObserverError = null
+        } catch (error: Throwable) {
+            carConnectionObserverError = error.message ?: error.toString()
+        }
+    }
+
     private fun detectAndroidCarConnectionState(): AndroidCarConnectionState {
+        ensureCarConnectionObserver()
         var androidXConnectionType: Int? = null
         var androidXError: String? = null
         try {
-            androidXConnectionType = CarConnection(context).type.value
+            androidXConnectionType = carConnectionTypeLiveData?.value
+                ?: observedAndroidXConnectionType
+                ?: CarConnection(context).type.value
         } catch (error: Throwable) {
             androidXError = error.message ?: error.toString()
+        }
+        if (androidXError == null) {
+            androidXError = carConnectionObserverError
         }
 
         val uiModeType = try {
@@ -1835,6 +1877,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             androidXConnectionType == CarConnection.CONNECTION_TYPE_NATIVE -> "androidx-carconnection"
             androidXConnectionType == CarConnection.CONNECTION_TYPE_NOT_CONNECTED -> "androidx-carconnection"
             uiModeType == Configuration.UI_MODE_TYPE_CAR -> "ui-mode-manager"
+            observedAndroidXConnectionType != null -> "androidx-carconnection-observed"
             androidXError != null -> "androidx-carconnection-error"
             else -> "unknown"
         }
