@@ -1058,32 +1058,70 @@ private fun detectHostAbi(): String? {
 private class AndroidAudioCaptureSession(
     private val routeId: String,
     private val routeKind: String,
-    private val source: AndroidAudioCaptureSource,
+    private val sourceCandidates: List<AndroidAudioCaptureSource>,
     private val logger: NativeBridgeDiagnosticLogger,
     private val emitChunk: (JSObject) -> Unit
 ) {
     private val running = AtomicBoolean(false)
     private var audioRecord: AudioRecord? = null
     private var captureThread: Thread? = null
+    private var activeSource: AndroidAudioCaptureSource? = null
     private var sequence: Long = 0
+
+    val activeSourceName: String?
+        get() = activeSource?.name
 
     @Suppress("MissingPermission")
     fun start() {
         if (running.get()) return
         val bufferSizeBytes = resolveBufferSizeBytes()
-        val record = AudioRecord(
-            source.source,
-            CAPTURE_ROUTE_SAMPLE_RATE_HZ,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            bufferSizeBytes
-        )
-        if (record.state != AudioRecord.STATE_INITIALIZED) {
+        val attemptedSources = mutableListOf<String>()
+        var lastError: String? = null
+        var selectedRecord: AudioRecord? = null
+        var selectedSource: AndroidAudioCaptureSource? = null
+        for (candidate in sourceCandidates) {
+            attemptedSources += candidate.name
+            logger(
+                "capture-route",
+                "info",
+                null,
+                null,
+                "capture-route.audio-record.source.attempted",
+                mapOf("routeKind" to routeKind, "routeId" to routeId, "audioSource" to candidate.name)
+            )
+            val record = AudioRecord(
+                candidate.source,
+                CAPTURE_ROUTE_SAMPLE_RATE_HZ,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                bufferSizeBytes
+            )
+            if (record.state == AudioRecord.STATE_INITIALIZED) {
+                selectedRecord = record
+                selectedSource = candidate
+                break
+            }
+            lastError = "AudioRecord failed to initialize for source ${candidate.name}."
             record.release()
-            throw IllegalStateException("AudioRecord failed to initialize for source ${source.name}.")
+            logger(
+                "capture-route",
+                "warn",
+                null,
+                null,
+                "capture-route.audio-record.source.rejected",
+                mapOf("routeKind" to routeKind, "routeId" to routeId, "audioSource" to candidate.name, "reason" to lastError)
+            )
         }
-        record.startRecording()
+        val record = selectedRecord ?: throw IllegalStateException(lastError ?: "No AudioRecord source candidates were available.")
+        val source = selectedSource ?: throw IllegalStateException("No AudioRecord source was selected.")
+        try {
+            record.startRecording()
+        } catch (error: Throwable) {
+            record.release()
+            throw error
+        }
         audioRecord = record
+        activeSource = source
         running.set(true)
         captureThread = Thread({
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
@@ -1103,6 +1141,7 @@ private class AndroidAudioCaptureSession(
                 "routeId" to routeId,
                 "sampleRateHz" to CAPTURE_ROUTE_SAMPLE_RATE_HZ,
                 "audioSource" to source.name,
+                "attemptedAudioSources" to attemptedSources,
                 "bufferSizeBytes" to bufferSizeBytes
             )
         )
@@ -1127,8 +1166,9 @@ private class AndroidAudioCaptureSession(
             null,
             null,
             "capture-route.audio-record.stopped",
-            mapOf("routeKind" to routeKind, "routeId" to routeId, "audioSource" to source.name)
+            mapOf("routeKind" to routeKind, "routeId" to routeId, "audioSource" to activeSource?.name)
         )
+        activeSource = null
     }
 
     private fun resolveBufferSizeBytes(): Int {
@@ -1175,7 +1215,7 @@ private class AndroidAudioCaptureSession(
                         "diagnostics",
                         JSObject().apply {
                             put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
-                            put("audioSource", source.name)
+                            put("audioSource", activeSource?.name ?: JSONObject.NULL)
                             put("sampleCount", read)
                         }
                     )
@@ -1282,7 +1322,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     private fun startPreferredMicrophoneCapture(call: PluginCall, routeKind: String) {
-        val source = resolvePreferredMicrophoneAudioSource()
+        val sourceCandidates = resolvePreferredMicrophoneAudioSources()
         val routeId = UUID.randomUUID().toString()
         appendDiagnostic(
             source = "capture-route",
@@ -1294,14 +1334,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                 "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
                 "routeKind" to routeKind,
                 "routeId" to routeId,
-                "audioSource" to source.name
+                "audioSourceCandidates" to sourceCandidates.map { it.name }
             )
         )
         captureRouteSession?.stop()
         val session = AndroidAudioCaptureSession(
             routeId = routeId,
             routeKind = routeKind,
-            source = source,
+            sourceCandidates = sourceCandidates,
             logger = ::appendDiagnostic,
             emitChunk = { chunk -> notifyListeners("captureRouteChunk", chunk, true) }
         )
@@ -1322,7 +1362,8 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     JSObject().apply {
                         put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
                         put("state", "started")
-                        put("audioSource", source.name)
+                        put("audioSource", session.activeSourceName ?: JSONObject.NULL)
+                        put("audioSourceCandidates", JSONArray(sourceCandidates.map { it.name }))
                     }
                 )
             }
@@ -1735,8 +1776,12 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         }
     }
 
-    private fun resolvePreferredMicrophoneAudioSource(): AndroidAudioCaptureSource =
-        AndroidAudioCaptureSource(MediaRecorder.AudioSource.MIC, "MIC")
+    private fun resolvePreferredMicrophoneAudioSources(): List<AndroidAudioCaptureSource> =
+        listOf(
+            AndroidAudioCaptureSource(MediaRecorder.AudioSource.UNPROCESSED, "UNPROCESSED"),
+            AndroidAudioCaptureSource(MediaRecorder.AudioSource.MIC, "MIC"),
+            AndroidAudioCaptureSource(MediaRecorder.AudioSource.VOICE_RECOGNITION, "VOICE_RECOGNITION")
+        )
 
     private fun detectAndroidCarConnectionState(): AndroidCarConnectionState {
         var androidXConnectionType: Int? = null
@@ -1839,7 +1884,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     put("hostPlatform", CAPACITOR_HOST_PLATFORM)
                     put("hostAbi", detectHostAbi())
                     put("generatedAtMs", System.currentTimeMillis())
-                    put("preferredMicrophoneAudioSource", resolvePreferredMicrophoneAudioSource().name)
+                    put("preferredMicrophoneAudioSources", JSONArray(resolvePreferredMicrophoneAudioSources().map { it.name }))
                     put("microphonePermission", getPermissionState(CAPTURE_ROUTE_MIC_PERMISSION_ALIAS).toString())
                     put(
                         "carConnection",
