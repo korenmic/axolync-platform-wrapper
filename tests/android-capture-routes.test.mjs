@@ -48,6 +48,8 @@ test('canonical Android capture route provider uses AudioRecord source fallback 
   assert.match(source, /MediaRecorder\.AudioSource\.UNPROCESSED[\s\S]*MediaRecorder\.AudioSource\.MIC[\s\S]*MediaRecorder\.AudioSource\.VOICE_RECOGNITION/);
   assert.match(source, /AudioRecord\.getMinBufferSize/);
   assert.match(source, /AudioRecord\(/);
+  assert.match(source, /capture-route\.audio-record\.chunk-progress/);
+  assert.match(source, /sequence == 1L \|\| sequence % 100L == 0L/);
   assert.doesNotMatch(source, /CarAudioRecord/);
   assert.doesNotMatch(source, /AudioPlaybackCaptureConfiguration/);
   assert.doesNotMatch(source, /android\.media\.MediaRecorder\(/);

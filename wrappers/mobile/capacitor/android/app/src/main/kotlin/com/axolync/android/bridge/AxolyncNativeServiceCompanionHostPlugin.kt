@@ -1209,6 +1209,23 @@ private class AndroidAudioCaptureSession(
                 samples.put(buffer[index].toFloat() / Short.MAX_VALUE.toFloat())
             }
             sequence += 1
+            if (sequence == 1L || sequence % 100L == 0L) {
+                logger(
+                    "capture-route",
+                    "info",
+                    null,
+                    null,
+                    "capture-route.audio-record.chunk-progress",
+                    mapOf(
+                        "routeKind" to routeKind,
+                        "routeId" to routeId,
+                        "audioSource" to activeSource?.name,
+                        "sequence" to sequence,
+                        "sampleCount" to read,
+                        "sampleRateHz" to CAPTURE_ROUTE_SAMPLE_RATE_HZ
+                    )
+                )
+            }
             emitChunk(
                 JSObject().apply {
                     put("routeKind", routeKind)
