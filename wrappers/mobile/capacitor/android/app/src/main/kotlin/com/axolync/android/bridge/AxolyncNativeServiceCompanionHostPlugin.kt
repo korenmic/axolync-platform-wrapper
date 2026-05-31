@@ -1300,7 +1300,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             resolveUnavailableCaptureRouteStart(
                 call,
                 routeKind,
-                "Android playback capture permission flow is not active in this bundle yet."
+                resolvePlaybackCaptureUnavailableReason()
             )
             return
         }
@@ -1783,6 +1783,16 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             AndroidAudioCaptureSource(MediaRecorder.AudioSource.VOICE_RECOGNITION, "VOICE_RECOGNITION")
         )
 
+    private fun isPlaybackCaptureApiAvailable(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
+    private fun resolvePlaybackCaptureUnavailableReason(): String =
+        if (isPlaybackCaptureApiAvailable()) {
+            "Android playback capture requires MediaProjection consent and may be blocked by source app capture policy."
+        } else {
+            "Android playback capture requires Android 10/API 29 or newer."
+        }
+
     private fun detectAndroidCarConnectionState(): AndroidCarConnectionState {
         var androidXConnectionType: Int? = null
         var androidXError: String? = null
@@ -1859,9 +1869,9 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     put(
                         JSObject().apply {
                             put("kind", CAPTURE_ROUTE_WRAPPER_LOOPBACK)
-                            put("support", "unsupported")
+                            put("support", if (isPlaybackCaptureApiAvailable()) "unavailable" else "unsupported")
                             put("label", "Android playback capture")
-                            put("reason", "Android playback capture permission flow is not active in this bundle yet.")
+                            put("reason", resolvePlaybackCaptureUnavailableReason())
                             put("requiresPermission", true)
                         }
                     )
@@ -1886,6 +1896,15 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     put("generatedAtMs", System.currentTimeMillis())
                     put("preferredMicrophoneAudioSources", JSONArray(resolvePreferredMicrophoneAudioSources().map { it.name }))
                     put("microphonePermission", getPermissionState(CAPTURE_ROUTE_MIC_PERMISSION_ALIAS).toString())
+                    put(
+                        "playbackCapture",
+                        JSObject().apply {
+                            put("apiAvailable", isPlaybackCaptureApiAvailable())
+                            put("requiresMediaProjectionConsent", isPlaybackCaptureApiAvailable())
+                            put("canBeBlockedBySourceAppPolicy", isPlaybackCaptureApiAvailable())
+                            put("reason", resolvePlaybackCaptureUnavailableReason())
+                        }
+                    )
                     put(
                         "carConnection",
                         JSObject().apply {
