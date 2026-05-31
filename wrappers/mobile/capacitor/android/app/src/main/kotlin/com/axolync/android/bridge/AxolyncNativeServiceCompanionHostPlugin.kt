@@ -1,22 +1,30 @@
 package com.axolync.android.bridge
 
 import com.axolync.android.logging.RuntimeNativeLogStore
+import android.Manifest
 import android.app.UiModeManager
 import android.content.Context
 import android.content.res.Configuration
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.net.Uri
 import android.util.Log
 import androidx.car.app.connection.CarConnection
 import com.getcapacitor.JSObject
+import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import com.getcapacitor.annotation.PermissionCallback
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.Response
 import android.os.Build
+import android.os.Process
 import org.brotli.dec.BrotliInputStream
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,6 +36,7 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.ZipInputStream
 import kotlin.random.Random
 
@@ -41,6 +50,9 @@ private const val OPERATOR_KIND_LRCLIB_LOCAL = "lrclib-local-loopback-v1"
 private const val CAPTURE_ROUTE_PROVIDER_KIND = "capacitor-android-capture-routes"
 private const val CAPTURE_ROUTE_WRAPPER_MIC = "wrapper-preferred-microphone"
 private const val CAPTURE_ROUTE_WRAPPER_LOOPBACK = "wrapper-loopback"
+private const val CAPTURE_ROUTE_MIC_PERMISSION_ALIAS = "microphone"
+private const val CAPTURE_ROUTE_SAMPLE_RATE_HZ = 48000
+private const val CAPTURE_ROUTE_READ_SAMPLE_COUNT = 2048
 private val LOOPBACK_CORS_HEADERS = mapOf(
     "Access-Control-Allow-Origin" to "*",
     "Access-Control-Allow-Methods" to "GET, OPTIONS",
@@ -111,6 +123,11 @@ private data class AndroidCarConnectionState(
     val uiModeType: Int?,
     val isCarConnected: Boolean,
     val error: String?
+)
+
+private data class AndroidAudioCaptureSource(
+    val source: Int,
+    val name: String
 )
 
 private data class LrclibDbDeploymentResult(
@@ -1038,7 +1055,143 @@ private fun detectHostAbi(): String? {
     return normalizeHostAbi(System.getProperty("os.arch"))
 }
 
-@CapacitorPlugin(name = "AxolyncNativeServiceCompanionHost")
+private class AndroidAudioCaptureSession(
+    private val routeId: String,
+    private val routeKind: String,
+    private val source: AndroidAudioCaptureSource,
+    private val logger: NativeBridgeDiagnosticLogger,
+    private val emitChunk: (JSObject) -> Unit
+) {
+    private val running = AtomicBoolean(false)
+    private var audioRecord: AudioRecord? = null
+    private var captureThread: Thread? = null
+    private var sequence: Long = 0
+
+    @Suppress("MissingPermission")
+    fun start() {
+        if (running.get()) return
+        val bufferSizeBytes = resolveBufferSizeBytes()
+        val record = AudioRecord(
+            source.source,
+            CAPTURE_ROUTE_SAMPLE_RATE_HZ,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSizeBytes
+        )
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            record.release()
+            throw IllegalStateException("AudioRecord failed to initialize for source ${source.name}.")
+        }
+        record.startRecording()
+        audioRecord = record
+        running.set(true)
+        captureThread = Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+            captureLoop(record)
+        }, "AxolyncAudioRecordCapture-$routeId").also { thread ->
+            thread.isDaemon = true
+            thread.start()
+        }
+        logger(
+            "capture-route",
+            "info",
+            null,
+            null,
+            "capture-route.audio-record.started",
+            mapOf(
+                "routeKind" to routeKind,
+                "routeId" to routeId,
+                "sampleRateHz" to CAPTURE_ROUTE_SAMPLE_RATE_HZ,
+                "audioSource" to source.name,
+                "bufferSizeBytes" to bufferSizeBytes
+            )
+        )
+    }
+
+    fun stop() {
+        if (!running.getAndSet(false)) return
+        try {
+            audioRecord?.stop()
+        } catch (_: Throwable) {
+        }
+        try {
+            captureThread?.join(500)
+        } catch (_: Throwable) {
+        }
+        audioRecord?.release()
+        audioRecord = null
+        captureThread = null
+        logger(
+            "capture-route",
+            "info",
+            null,
+            null,
+            "capture-route.audio-record.stopped",
+            mapOf("routeKind" to routeKind, "routeId" to routeId, "audioSource" to source.name)
+        )
+    }
+
+    private fun resolveBufferSizeBytes(): Int {
+        val minBufferSize = AudioRecord.getMinBufferSize(
+            CAPTURE_ROUTE_SAMPLE_RATE_HZ,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        val minimumUsable = CAPTURE_ROUTE_READ_SAMPLE_COUNT * 2 * 4
+        return if (minBufferSize > 0) maxOf(minBufferSize, minimumUsable) else minimumUsable
+    }
+
+    private fun captureLoop(record: AudioRecord) {
+        val buffer = ShortArray(CAPTURE_ROUTE_READ_SAMPLE_COUNT)
+        while (running.get()) {
+            val read = try {
+                record.read(buffer, 0, buffer.size)
+            } catch (error: Throwable) {
+                logger(
+                    "capture-route",
+                    "error",
+                    null,
+                    null,
+                    "capture-route.audio-record.read-failed",
+                    mapOf("routeKind" to routeKind, "routeId" to routeId, "error" to (error.message ?: error.toString()))
+                )
+                break
+            }
+            if (read <= 0) continue
+            val samples = JSONArray()
+            for (index in 0 until read) {
+                samples.put(buffer[index].toFloat() / Short.MAX_VALUE.toFloat())
+            }
+            sequence += 1
+            emitChunk(
+                JSObject().apply {
+                    put("routeKind", routeKind)
+                    put("routeId", routeId)
+                    put("sampleRateHz", CAPTURE_ROUTE_SAMPLE_RATE_HZ)
+                    put("capturedAtMs", System.currentTimeMillis())
+                    put("sequence", sequence)
+                    put("buffer", samples)
+                    put(
+                        "diagnostics",
+                        JSObject().apply {
+                            put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
+                            put("audioSource", source.name)
+                            put("sampleCount", read)
+                        }
+                    )
+                }
+            )
+        }
+        running.set(false)
+    }
+}
+
+@CapacitorPlugin(
+    name = "AxolyncNativeServiceCompanionHost",
+    permissions = [
+        Permission(strings = [Manifest.permission.RECORD_AUDIO], alias = CAPTURE_ROUTE_MIC_PERMISSION_ALIAS)
+    ]
+)
 class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
     private val enabledState = mutableMapOf<String, Boolean>()
@@ -1046,6 +1199,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     private val runtimeOperators = mutableMapOf<String, NativeBridgeRuntimeOperator>()
     private val diagnostics = mutableListOf<NativeBridgeDiagnosticEntry>()
     private val registrationByKey: MutableMap<String, NativeBridgeRegistration> by lazy { loadRegistrations().toMutableMap() }
+    private var captureRouteSession: AndroidAudioCaptureSession? = null
 
     @PluginMethod
     fun getStatus(call: PluginCall) {
@@ -1102,6 +1256,80 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     @PluginMethod
     fun startCaptureRoute(call: PluginCall) {
         val routeKind = normalizeCaptureRouteKind(call.getString("routeKind"))
+        if (routeKind == CAPTURE_ROUTE_WRAPPER_LOOPBACK) {
+            resolveUnavailableCaptureRouteStart(
+                call,
+                routeKind,
+                "Android playback capture permission flow is not active in this bundle yet."
+            )
+            return
+        }
+        if (getPermissionState(CAPTURE_ROUTE_MIC_PERMISSION_ALIAS) != PermissionState.GRANTED) {
+            requestPermissionForAlias(CAPTURE_ROUTE_MIC_PERMISSION_ALIAS, call, "captureRouteMicrophonePermissionCallback")
+            return
+        }
+        startPreferredMicrophoneCapture(call, routeKind)
+    }
+
+    @PermissionCallback
+    private fun captureRouteMicrophonePermissionCallback(call: PluginCall) {
+        val routeKind = normalizeCaptureRouteKind(call.getString("routeKind"))
+        if (getPermissionState(CAPTURE_ROUTE_MIC_PERMISSION_ALIAS) != PermissionState.GRANTED) {
+            resolveUnavailableCaptureRouteStart(call, routeKind, "Android microphone permission was denied.")
+            return
+        }
+        startPreferredMicrophoneCapture(call, routeKind)
+    }
+
+    private fun startPreferredMicrophoneCapture(call: PluginCall, routeKind: String) {
+        val source = resolvePreferredMicrophoneAudioSource()
+        val routeId = UUID.randomUUID().toString()
+        appendDiagnostic(
+            source = "capture-route",
+            level = "info",
+            addonId = null,
+            companionId = null,
+            event = "capture-route.start.requested",
+            details = mapOf(
+                "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
+                "routeKind" to routeKind,
+                "routeId" to routeId,
+                "audioSource" to source.name
+            )
+        )
+        captureRouteSession?.stop()
+        val session = AndroidAudioCaptureSession(
+            routeId = routeId,
+            routeKind = routeKind,
+            source = source,
+            logger = ::appendDiagnostic,
+            emitChunk = { chunk -> notifyListeners("captureRouteChunk", chunk, true) }
+        )
+        try {
+            session.start()
+            captureRouteSession = session
+        } catch (error: Throwable) {
+            resolveUnavailableCaptureRouteStart(call, routeKind, error.message ?: error.toString())
+            return
+        }
+        call.resolve(
+            JSObject().apply {
+                put("routeKind", routeKind)
+                put("routeId", routeId)
+                put("sampleRateHz", CAPTURE_ROUTE_SAMPLE_RATE_HZ)
+                put(
+                    "diagnostics",
+                    JSObject().apply {
+                        put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
+                        put("state", "started")
+                        put("audioSource", source.name)
+                    }
+                )
+            }
+        )
+    }
+
+    private fun resolveUnavailableCaptureRouteStart(call: PluginCall, routeKind: String, reason: String) {
         appendDiagnostic(
             source = "capture-route",
             level = "warn",
@@ -1111,7 +1339,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             details = mapOf(
                 "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
                 "routeKind" to routeKind,
-                "reason" to "Android capture route implementation is not active in this bundle yet."
+                "reason" to reason
             )
         )
         call.resolve(
@@ -1124,7 +1352,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     JSObject().apply {
                         put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
                         put("state", "unavailable")
-                        put("reason", "Android capture route implementation is not active in this bundle yet.")
+                        put("reason", reason)
                     }
                 )
             }
@@ -1134,6 +1362,8 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     @PluginMethod
     fun stopCaptureRoute(call: PluginCall) {
         val routeKind = normalizeCaptureRouteKind(call.getString("routeKind"))
+        captureRouteSession?.stop()
+        captureRouteSession = null
         appendDiagnostic(
             source = "capture-route",
             level = "info",
@@ -1420,6 +1650,8 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        captureRouteSession?.stop()
+        captureRouteSession = null
         runtimeOperators.values.forEach { it.stop() }
         runtimeOperators.clear()
         super.handleOnDestroy()
@@ -1503,6 +1735,9 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         }
     }
 
+    private fun resolvePreferredMicrophoneAudioSource(): AndroidAudioCaptureSource =
+        AndroidAudioCaptureSource(MediaRecorder.AudioSource.MIC, "MIC")
+
     private fun detectAndroidCarConnectionState(): AndroidCarConnectionState {
         var androidXConnectionType: Int? = null
         var androidXError: String? = null
@@ -1570,9 +1805,9 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     put(
                         JSObject().apply {
                             put("kind", CAPTURE_ROUTE_WRAPPER_MIC)
-                            put("support", "unavailable")
+                            put("support", "available")
                             put("label", "Android native microphone")
-                            put("reason", "Android capture route implementation is not active in this bundle yet.")
+                            put("reason", JSONObject.NULL)
                             put("requiresPermission", true)
                         }
                     )
@@ -1604,6 +1839,8 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     put("hostPlatform", CAPACITOR_HOST_PLATFORM)
                     put("hostAbi", detectHostAbi())
                     put("generatedAtMs", System.currentTimeMillis())
+                    put("preferredMicrophoneAudioSource", resolvePreferredMicrophoneAudioSource().name)
+                    put("microphonePermission", getPermissionState(CAPTURE_ROUTE_MIC_PERMISSION_ALIAS).toString())
                     put(
                         "carConnection",
                         JSObject().apply {
