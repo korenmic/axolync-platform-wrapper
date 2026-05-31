@@ -122,8 +122,12 @@ private data class AndroidCarConnectionState(
     val state: String,
     val source: String,
     val rawAndroidXConnectionType: Int?,
+    val currentAndroidXConnectionType: Int?,
+    val observedAndroidXConnectionType: Int?,
+    val observedAndroidXConnectionAtMs: Long?,
     val uiModeType: Int?,
     val isCarConnected: Boolean,
+    val observerActive: Boolean,
     val error: String?
 )
 
@@ -1294,7 +1298,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             details = mapOf(
                 "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
                 "carConnectionState" to carConnection.state,
-                "carConnectionSource" to carConnection.source
+                "carConnectionSource" to carConnection.source,
+                "rawAndroidXConnectionType" to carConnection.rawAndroidXConnectionType,
+                "currentAndroidXConnectionType" to carConnection.currentAndroidXConnectionType,
+                "observedAndroidXConnectionType" to carConnection.observedAndroidXConnectionType,
+                "observedAndroidXConnectionAtMs" to carConnection.observedAndroidXConnectionAtMs,
+                "uiModeType" to carConnection.uiModeType,
+                "observerActive" to carConnection.observerActive,
+                "error" to carConnection.error
             )
         )
         call.resolve(buildCaptureRouteStatusEnvelope(carConnection))
@@ -1832,11 +1843,12 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     private fun detectAndroidCarConnectionState(): AndroidCarConnectionState {
         ensureCarConnectionObserver()
         var androidXConnectionType: Int? = null
+        var currentAndroidXConnectionType: Int? = null
         var androidXError: String? = null
         try {
-            androidXConnectionType = carConnectionTypeLiveData?.value
-                ?: observedAndroidXConnectionType
+            currentAndroidXConnectionType = carConnectionTypeLiveData?.value
                 ?: CarConnection(context).type.value
+            androidXConnectionType = currentAndroidXConnectionType ?: observedAndroidXConnectionType
         } catch (error: Throwable) {
             androidXError = error.message ?: error.toString()
         }
@@ -1886,10 +1898,14 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             state = state,
             source = source,
             rawAndroidXConnectionType = androidXConnectionType,
+            currentAndroidXConnectionType = currentAndroidXConnectionType,
+            observedAndroidXConnectionType = observedAndroidXConnectionType,
+            observedAndroidXConnectionAtMs = observedAndroidXConnectionAtMs,
             uiModeType = uiModeType,
             isCarConnected = state == "android-auto-projection"
                 || state == "android-automotive-native"
                 || state == "android-car-ui-mode",
+            observerActive = carConnectionObserver != null,
             error = androidXError
         )
     }
@@ -1954,8 +1970,12 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                             put("state", carConnection.state)
                             put("source", carConnection.source)
                             put("rawAndroidXConnectionType", carConnection.rawAndroidXConnectionType ?: JSONObject.NULL)
+                            put("currentAndroidXConnectionType", carConnection.currentAndroidXConnectionType ?: JSONObject.NULL)
+                            put("observedAndroidXConnectionType", carConnection.observedAndroidXConnectionType ?: JSONObject.NULL)
+                            put("observedAndroidXConnectionAtMs", carConnection.observedAndroidXConnectionAtMs ?: JSONObject.NULL)
                             put("uiModeType", carConnection.uiModeType ?: JSONObject.NULL)
                             put("isCarConnected", carConnection.isCarConnected)
+                            put("observerActive", carConnection.observerActive)
                             put("error", carConnection.error ?: JSONObject.NULL)
                         }
                     )

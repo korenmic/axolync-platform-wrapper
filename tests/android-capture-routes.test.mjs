@@ -36,6 +36,11 @@ test('canonical Android capture route provider uses AudioRecord source fallback 
   assert.match(source, /carConnectionTypeLiveData/);
   assert.match(source, /observeForever/);
   assert.match(source, /observedAndroidXConnectionType/);
+  assert.match(source, /currentAndroidXConnectionType/);
+  assert.match(source, /observedAndroidXConnectionAtMs/);
+  assert.match(source, /observerActive/);
+  assert.match(source, /rawAndroidXConnectionType/);
+  assert.match(source, /uiModeType/);
   assert.match(source, /removeObserver/);
   assert.match(source, /fun startCaptureRoute\(call: PluginCall\)/);
   assert.match(source, /fun stopCaptureRoute\(call: PluginCall\)/);
