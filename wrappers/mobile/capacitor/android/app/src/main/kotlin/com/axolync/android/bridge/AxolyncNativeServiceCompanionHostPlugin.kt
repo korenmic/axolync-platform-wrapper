@@ -11,6 +11,8 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.car.app.connection.CarConnection
 import androidx.lifecycle.LiveData
@@ -55,6 +57,7 @@ private const val CAPTURE_ROUTE_WRAPPER_LOOPBACK = "wrapper-loopback"
 private const val CAPTURE_ROUTE_MIC_PERMISSION_ALIAS = "microphone"
 private const val CAPTURE_ROUTE_SAMPLE_RATE_HZ = 48000
 private const val CAPTURE_ROUTE_READ_SAMPLE_COUNT = 2048
+private const val CAR_CONNECTION_OBSERVED_TTL_MS = 5000L
 private val LOOPBACK_CORS_HEADERS = mapOf(
     "Access-Control-Allow-Origin" to "*",
     "Access-Control-Allow-Methods" to "GET, OPTIONS",
@@ -125,6 +128,7 @@ private data class AndroidCarConnectionState(
     val currentAndroidXConnectionType: Int?,
     val observedAndroidXConnectionType: Int?,
     val observedAndroidXConnectionAtMs: Long?,
+    val observedAndroidXConnectionAgeMs: Long?,
     val uiModeType: Int?,
     val isCarConnected: Boolean,
     val observerActive: Boolean,
@@ -1205,9 +1209,18 @@ private class AndroidAudioCaptureSession(
             }
             if (read <= 0) continue
             val samples = JSONArray()
+            var peak = 0.0
+            var sumSquares = 0.0
+            var nonZeroSamples = 0
             for (index in 0 until read) {
-                samples.put(buffer[index].toFloat() / Short.MAX_VALUE.toFloat())
+                val sample = buffer[index].toDouble() / Short.MAX_VALUE.toDouble()
+                val absoluteSample = kotlin.math.abs(sample)
+                if (absoluteSample > peak) peak = absoluteSample
+                if (absoluteSample > 0.0) nonZeroSamples += 1
+                sumSquares += sample * sample
+                samples.put(sample)
             }
+            val rms = kotlin.math.sqrt(sumSquares / read.toDouble())
             sequence += 1
             if (sequence == 1L || sequence % 100L == 0L) {
                 logger(
@@ -1222,7 +1235,10 @@ private class AndroidAudioCaptureSession(
                         "audioSource" to activeSource?.name,
                         "sequence" to sequence,
                         "sampleCount" to read,
-                        "sampleRateHz" to CAPTURE_ROUTE_SAMPLE_RATE_HZ
+                        "sampleRateHz" to CAPTURE_ROUTE_SAMPLE_RATE_HZ,
+                        "peak" to peak,
+                        "rms" to rms,
+                        "nonZeroSamples" to nonZeroSamples
                     )
                 )
             }
@@ -1240,6 +1256,9 @@ private class AndroidAudioCaptureSession(
                             put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
                             put("audioSource", activeSource?.name ?: JSONObject.NULL)
                             put("sampleCount", read)
+                            put("peak", peak)
+                            put("rms", rms)
+                            put("nonZeroSamples", nonZeroSamples)
                         }
                     )
                 }
@@ -1257,6 +1276,7 @@ private class AndroidAudioCaptureSession(
 )
 class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val enabledState = mutableMapOf<String, Boolean>()
     private val lastErrorState = mutableMapOf<String, String?>()
     private val runtimeOperators = mutableMapOf<String, NativeBridgeRuntimeOperator>()
@@ -1305,27 +1325,30 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
     @PluginMethod
     fun getCaptureRouteStatus(call: PluginCall) {
-        val carConnection = detectAndroidCarConnectionState()
-        appendDiagnostic(
-            source = "capture-route",
-            level = "info",
-            addonId = null,
-            companionId = null,
-            event = "capture-route.status.requested",
-            details = mapOf(
-                "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
-                "carConnectionState" to carConnection.state,
-                "carConnectionSource" to carConnection.source,
-                "rawAndroidXConnectionType" to carConnection.rawAndroidXConnectionType,
-                "currentAndroidXConnectionType" to carConnection.currentAndroidXConnectionType,
-                "observedAndroidXConnectionType" to carConnection.observedAndroidXConnectionType,
-                "observedAndroidXConnectionAtMs" to carConnection.observedAndroidXConnectionAtMs,
-                "uiModeType" to carConnection.uiModeType,
-                "observerActive" to carConnection.observerActive,
-                "error" to carConnection.error
+        mainHandler.post {
+            val carConnection = detectAndroidCarConnectionState()
+            appendDiagnostic(
+                source = "capture-route",
+                level = "info",
+                addonId = null,
+                companionId = null,
+                event = "capture-route.status.requested",
+                details = mapOf(
+                    "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
+                    "carConnectionState" to carConnection.state,
+                    "carConnectionSource" to carConnection.source,
+                    "rawAndroidXConnectionType" to carConnection.rawAndroidXConnectionType,
+                    "currentAndroidXConnectionType" to carConnection.currentAndroidXConnectionType,
+                    "observedAndroidXConnectionType" to carConnection.observedAndroidXConnectionType,
+                    "observedAndroidXConnectionAtMs" to carConnection.observedAndroidXConnectionAtMs,
+                    "observedAndroidXConnectionAgeMs" to carConnection.observedAndroidXConnectionAgeMs,
+                    "uiModeType" to carConnection.uiModeType,
+                    "observerActive" to carConnection.observerActive,
+                    "error" to carConnection.error
+                )
             )
-        )
-        call.resolve(buildCaptureRouteStatusEnvelope(carConnection))
+            call.resolve(buildCaptureRouteStatusEnvelope(carConnection))
+        }
     }
 
     @PluginMethod
@@ -1378,7 +1401,11 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             routeKind = routeKind,
             sourceCandidates = sourceCandidates,
             logger = ::appendDiagnostic,
-            emitChunk = { chunk -> notifyListeners("captureRouteChunk", chunk, true) }
+            emitChunk = { chunk ->
+                mainHandler.post {
+                    notifyListeners("captureRouteChunk", chunk, true)
+                }
+            }
         )
         try {
             session.start()
@@ -1837,6 +1864,10 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         }
 
     private fun ensureCarConnectionObserver() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            carConnectionObserverError = "AndroidX CarConnection observer must be initialized on the main thread."
+            return
+        }
         if (carConnectionObserver != null) {
             return
         }
@@ -1862,10 +1893,21 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         var androidXConnectionType: Int? = null
         var currentAndroidXConnectionType: Int? = null
         var androidXError: String? = null
+        val nowMs = System.currentTimeMillis()
+        val observedAgeMs = observedAndroidXConnectionAtMs?.let { nowMs - it }
+        val freshObservedAndroidXConnectionType = if (
+            observedAgeMs != null
+            && observedAgeMs >= 0L
+            && observedAgeMs <= CAR_CONNECTION_OBSERVED_TTL_MS
+        ) {
+            observedAndroidXConnectionType
+        } else {
+            null
+        }
         try {
             currentAndroidXConnectionType = carConnectionTypeLiveData?.value
                 ?: CarConnection(context).type.value
-            androidXConnectionType = currentAndroidXConnectionType ?: observedAndroidXConnectionType
+            androidXConnectionType = currentAndroidXConnectionType ?: freshObservedAndroidXConnectionType
         } catch (error: Throwable) {
             androidXError = error.message ?: error.toString()
         }
@@ -1918,6 +1960,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
             currentAndroidXConnectionType = currentAndroidXConnectionType,
             observedAndroidXConnectionType = observedAndroidXConnectionType,
             observedAndroidXConnectionAtMs = observedAndroidXConnectionAtMs,
+            observedAndroidXConnectionAgeMs = observedAgeMs,
             uiModeType = uiModeType,
             isCarConnected = state == "android-auto-projection"
                 || state == "android-automotive-native"
@@ -1990,6 +2033,8 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                             put("currentAndroidXConnectionType", carConnection.currentAndroidXConnectionType ?: JSONObject.NULL)
                             put("observedAndroidXConnectionType", carConnection.observedAndroidXConnectionType ?: JSONObject.NULL)
                             put("observedAndroidXConnectionAtMs", carConnection.observedAndroidXConnectionAtMs ?: JSONObject.NULL)
+                            put("observedAndroidXConnectionAgeMs", carConnection.observedAndroidXConnectionAgeMs ?: JSONObject.NULL)
+                            put("observedAndroidXConnectionTtlMs", CAR_CONNECTION_OBSERVED_TTL_MS)
                             put("uiModeType", carConnection.uiModeType ?: JSONObject.NULL)
                             put("isCarConnected", carConnection.isCarConnected)
                             put("observerActive", carConnection.observerActive)
