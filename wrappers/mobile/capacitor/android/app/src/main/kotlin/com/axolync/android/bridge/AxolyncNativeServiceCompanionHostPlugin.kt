@@ -1,11 +1,14 @@
 package com.axolync.android.bridge
 
 import com.axolync.android.logging.RuntimeNativeLogStore
+import android.app.UiModeManager
 import android.content.Context
+import android.content.res.Configuration
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.util.Log
+import androidx.car.app.connection.CarConnection
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -99,6 +102,15 @@ private data class NativeBridgeDiagnosticEntry(
     val companionId: String?,
     val event: String,
     val details: Map<String, Any?>?
+)
+
+private data class AndroidCarConnectionState(
+    val state: String,
+    val source: String,
+    val rawAndroidXConnectionType: Int?,
+    val uiModeType: Int?,
+    val isCarConnected: Boolean,
+    val error: String?
 )
 
 private data class LrclibDbDeploymentResult(
@@ -1071,15 +1083,20 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
     @PluginMethod
     fun getCaptureRouteStatus(call: PluginCall) {
+        val carConnection = detectAndroidCarConnectionState()
         appendDiagnostic(
             source = "capture-route",
             level = "info",
             addonId = null,
             companionId = null,
             event = "capture-route.status.requested",
-            details = mapOf("providerKind" to CAPTURE_ROUTE_PROVIDER_KIND)
+            details = mapOf(
+                "providerKind" to CAPTURE_ROUTE_PROVIDER_KIND,
+                "carConnectionState" to carConnection.state,
+                "carConnectionSource" to carConnection.source
+            )
         )
-        call.resolve(buildCaptureRouteStatusEnvelope())
+        call.resolve(buildCaptureRouteStatusEnvelope(carConnection))
     }
 
     @PluginMethod
@@ -1486,7 +1503,65 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
         }
     }
 
-    private fun buildCaptureRouteStatusEnvelope(): JSObject =
+    private fun detectAndroidCarConnectionState(): AndroidCarConnectionState {
+        var androidXConnectionType: Int? = null
+        var androidXError: String? = null
+        try {
+            androidXConnectionType = CarConnection(context).type.value
+        } catch (error: Throwable) {
+            androidXError = error.message ?: error.toString()
+        }
+
+        val uiModeType = try {
+            val fromResources = context.resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+            val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+            val fromManager = uiModeManager?.currentModeType
+            when {
+                fromResources == Configuration.UI_MODE_TYPE_CAR -> fromResources
+                fromManager == Configuration.UI_MODE_TYPE_CAR -> fromManager
+                else -> fromResources
+            }
+        } catch (_: Throwable) {
+            null
+        }
+
+        val state = when (androidXConnectionType) {
+            CarConnection.CONNECTION_TYPE_PROJECTION -> "android-auto-projection"
+            CarConnection.CONNECTION_TYPE_NATIVE -> "android-automotive-native"
+            CarConnection.CONNECTION_TYPE_NOT_CONNECTED -> if (uiModeType == Configuration.UI_MODE_TYPE_CAR) {
+                "android-car-ui-mode"
+            } else {
+                "not-connected"
+            }
+            null -> if (uiModeType == Configuration.UI_MODE_TYPE_CAR) {
+                "android-car-ui-mode"
+            } else {
+                "unknown"
+            }
+            else -> "unknown"
+        }
+        val source = when {
+            androidXConnectionType == CarConnection.CONNECTION_TYPE_PROJECTION -> "androidx-carconnection"
+            androidXConnectionType == CarConnection.CONNECTION_TYPE_NATIVE -> "androidx-carconnection"
+            androidXConnectionType == CarConnection.CONNECTION_TYPE_NOT_CONNECTED -> "androidx-carconnection"
+            uiModeType == Configuration.UI_MODE_TYPE_CAR -> "ui-mode-manager"
+            androidXError != null -> "androidx-carconnection-error"
+            else -> "unknown"
+        }
+
+        return AndroidCarConnectionState(
+            state = state,
+            source = source,
+            rawAndroidXConnectionType = androidXConnectionType,
+            uiModeType = uiModeType,
+            isCarConnected = state == "android-auto-projection"
+                || state == "android-automotive-native"
+                || state == "android-car-ui-mode",
+            error = androidXError
+        )
+    }
+
+    private fun buildCaptureRouteStatusEnvelope(carConnection: AndroidCarConnectionState): JSObject =
         JSObject().apply {
             put("providerKind", CAPTURE_ROUTE_PROVIDER_KIND)
             put(
@@ -1512,8 +1587,15 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     )
                 }
             )
-            put("recommendedRoute", JSONObject.NULL)
-            put("recommendationReason", JSONObject.NULL)
+            put("recommendedRoute", if (carConnection.isCarConnected) CAPTURE_ROUTE_WRAPPER_MIC else JSONObject.NULL)
+            put(
+                "recommendationReason",
+                if (carConnection.isCarConnected) {
+                    "Android car mode detected; prefer wrapper microphone route when available."
+                } else {
+                    JSONObject.NULL
+                }
+            )
             put(
                 "diagnostics",
                 JSObject().apply {
@@ -1522,6 +1604,17 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
                     put("hostPlatform", CAPACITOR_HOST_PLATFORM)
                     put("hostAbi", detectHostAbi())
                     put("generatedAtMs", System.currentTimeMillis())
+                    put(
+                        "carConnection",
+                        JSObject().apply {
+                            put("state", carConnection.state)
+                            put("source", carConnection.source)
+                            put("rawAndroidXConnectionType", carConnection.rawAndroidXConnectionType ?: JSONObject.NULL)
+                            put("uiModeType", carConnection.uiModeType ?: JSONObject.NULL)
+                            put("isCarConnected", carConnection.isCarConnected)
+                            put("error", carConnection.error ?: JSONObject.NULL)
+                        }
+                    )
                 }
             )
         }
