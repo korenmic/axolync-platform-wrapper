@@ -1,11 +1,18 @@
 package com.axolync.android.bridge
 
 import com.axolync.android.logging.RuntimeNativeLogStore
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.net.Uri
 import android.util.Log
+import android.util.Base64
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -24,15 +31,23 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.UUID
 import java.util.zip.ZipInputStream
+import kotlin.math.abs
 import kotlin.random.Random
+import kotlin.math.sqrt
 
 private const val CAPACITOR_HOST_FAMILY = "capacitor"
 private const val CAPACITOR_HOST_PLATFORM = "android"
 private const val ASSET_MANIFEST_PATH = "public/native-service-companions/manifest.json"
 private const val UNSUPPORTED_BUNDLE_MESSAGE = "Native bridge is unavailable in this bundle for the current host."
 private const val MAX_NATIVE_BRIDGE_DIAGNOSTICS = 200
+private const val NATIVE_MICROPHONE_PROVIDER_KIND = "capacitor-android-native-microphone"
+private const val NATIVE_MICROPHONE_ROUTE_ID = "capacitor-android-native-unprocessed"
+private const val NATIVE_MICROPHONE_SAMPLE_RATE_HZ = 48000
+private const val NATIVE_MICROPHONE_CHANNEL_COUNT = 1
+private const val NATIVE_MICROPHONE_CHUNK_EVENT = "nativeMicrophoneChunk"
 private const val OPERATOR_KIND_SHAZAM_DISCOVERY = "shazam-discovery-loopback-v1"
 private const val OPERATOR_KIND_LRCLIB_LOCAL = "lrclib-local-loopback-v1"
 private val LOOPBACK_CORS_HEADERS = mapOf(
@@ -1023,6 +1038,142 @@ private fun detectHostAbi(): String? {
     return normalizeHostAbi(System.getProperty("os.arch"))
 }
 
+private class NativeMicrophoneCaptureSession(
+    private val emitChunk: (JSObject) -> Unit
+) {
+    private val running = AtomicBoolean(false)
+    private var worker: Thread? = null
+    @Volatile private var recorder: AudioRecord? = null
+    @Volatile private var latestError: String? = null
+    private var sequence: Long = 0
+
+    @SuppressLint("MissingPermission")
+    fun start() {
+        if (running.get()) return
+        latestError = null
+        val minBufferSize = AudioRecord.getMinBufferSize(
+            NATIVE_MICROPHONE_SAMPLE_RATE_HZ,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        if (minBufferSize <= 0) {
+            throw IllegalStateException("AudioRecord minimum buffer size unavailable: $minBufferSize")
+        }
+        val bufferSize = maxOf(minBufferSize * 2, NATIVE_MICROPHONE_SAMPLE_RATE_HZ)
+        val audioRecord = AudioRecord(
+            MediaRecorder.AudioSource.UNPROCESSED,
+            NATIVE_MICROPHONE_SAMPLE_RATE_HZ,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSize
+        )
+        if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+            audioRecord.release()
+            throw IllegalStateException("AudioRecord did not initialize for UNPROCESSED source.")
+        }
+        recorder = audioRecord
+        running.set(true)
+        worker = Thread({
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO)
+            runCaptureLoop(audioRecord, bufferSize)
+        }, "AxolyncNativeMicrophoneCapture").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    fun stop() {
+        if (!running.getAndSet(false)) return
+        try {
+            recorder?.stop()
+        } catch (_: Throwable) {
+            // Stopping an already-stopped AudioRecord is harmless during teardown.
+        }
+        try {
+            worker?.join(500)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        } finally {
+            worker = null
+        }
+    }
+
+    fun isRunning(): Boolean = running.get()
+
+    fun getLatestError(): String? = latestError
+
+    private fun runCaptureLoop(audioRecord: AudioRecord, bufferSizeBytes: Int) {
+        val samples = ShortArray(maxOf(1, bufferSizeBytes / 2))
+        try {
+            audioRecord.startRecording()
+            while (running.get()) {
+                val read = audioRecord.read(samples, 0, samples.size)
+                when {
+                    read > 0 -> emitChunk(buildChunk(samples, read))
+                    read < 0 -> {
+                        latestError = "AudioRecord read failed with code $read"
+                        running.set(false)
+                    }
+                }
+            }
+        } catch (error: Throwable) {
+            latestError = error.message ?: error.toString()
+            running.set(false)
+        } finally {
+            try {
+                audioRecord.stop()
+            } catch (_: Throwable) {
+            }
+            audioRecord.release()
+            if (recorder === audioRecord) {
+                recorder = null
+            }
+        }
+    }
+
+    private fun buildChunk(samples: ShortArray, sampleCount: Int): JSObject {
+        val bytes = ByteArray(sampleCount * 2)
+        var sumSquares = 0.0
+        var peak = 0.0
+        var nonZeroSamples = 0
+        for (index in 0 until sampleCount) {
+            val sample = samples[index].toInt()
+            bytes[index * 2] = (sample and 0xff).toByte()
+            bytes[index * 2 + 1] = ((sample shr 8) and 0xff).toByte()
+            val normalized = abs(sample) / 32768.0
+            sumSquares += normalized * normalized
+            if (normalized > peak) peak = normalized
+            if (sample != 0) nonZeroSamples += 1
+        }
+        sequence += 1
+        val rms = sqrt(sumSquares / sampleCount)
+        return JSObject().apply {
+            put("providerKind", NATIVE_MICROPHONE_PROVIDER_KIND)
+            put("routeId", NATIVE_MICROPHONE_ROUTE_ID)
+            put("sequence", sequence)
+            put("sampleRateHz", NATIVE_MICROPHONE_SAMPLE_RATE_HZ)
+            put("channelCount", NATIVE_MICROPHONE_CHANNEL_COUNT)
+            put("sampleCount", sampleCount)
+            put("pcm16Base64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+            put(
+                "diagnostics",
+                JSObject().apply {
+                    put("providerKind", NATIVE_MICROPHONE_PROVIDER_KIND)
+                    put("routeId", NATIVE_MICROPHONE_ROUTE_ID)
+                    put("source", "UNPROCESSED")
+                    put("sequence", sequence)
+                    put("sampleRateHz", NATIVE_MICROPHONE_SAMPLE_RATE_HZ)
+                    put("channelCount", NATIVE_MICROPHONE_CHANNEL_COUNT)
+                    put("sampleCount", sampleCount)
+                    put("rms", rms)
+                    put("peak", peak)
+                    put("nonZeroSamples", nonZeroSamples)
+                }
+            )
+        }
+    }
+}
+
 @CapacitorPlugin(name = "AxolyncNativeServiceCompanionHost")
 class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
@@ -1031,6 +1182,7 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     private val runtimeOperators = mutableMapOf<String, NativeBridgeRuntimeOperator>()
     private val diagnostics = mutableListOf<NativeBridgeDiagnosticEntry>()
     private val registrationByKey: MutableMap<String, NativeBridgeRegistration> by lazy { loadRegistrations().toMutableMap() }
+    private var nativeMicrophoneCaptureSession: NativeMicrophoneCaptureSession? = null
 
     @PluginMethod
     fun getStatus(call: PluginCall) {
@@ -1288,6 +1440,76 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun getNativeMicrophoneRouteStatus(call: PluginCall) {
+        call.resolve(buildNativeMicrophoneRouteStatusEnvelope())
+    }
+
+    @SuppressLint("MissingPermission")
+    @PluginMethod
+    fun startNativeMicrophoneRoute(call: PluginCall) {
+        if (!hasRecordAudioPermission()) {
+            val errorMessage = "record-audio-permission-missing"
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "warn",
+                addonId = null,
+                companionId = null,
+                event = "native-microphone.start.permission-missing",
+                details = mapOf("routeId" to NATIVE_MICROPHONE_ROUTE_ID)
+            )
+            call.reject(errorMessage)
+            return
+        }
+        try {
+            val session = nativeMicrophoneCaptureSession ?: NativeMicrophoneCaptureSession { chunk ->
+                val currentActivity = activity
+                if (currentActivity != null) {
+                    currentActivity.runOnUiThread { notifyListeners(NATIVE_MICROPHONE_CHUNK_EVENT, chunk, true) }
+                } else {
+                    notifyListeners(NATIVE_MICROPHONE_CHUNK_EVENT, chunk, true)
+                }
+            }.also {
+                nativeMicrophoneCaptureSession = it
+            }
+            session.start()
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "info",
+                addonId = null,
+                companionId = null,
+                event = "native-microphone.start.completed",
+                details = mapOf("routeId" to NATIVE_MICROPHONE_ROUTE_ID, "source" to "UNPROCESSED")
+            )
+            call.resolve(buildNativeMicrophoneRouteStatusEnvelope())
+        } catch (error: Throwable) {
+            val errorMessage = error.message ?: error.toString()
+            appendDiagnostic(
+                source = "wrapper-host",
+                level = "error",
+                addonId = null,
+                companionId = null,
+                event = "native-microphone.start.failed",
+                details = mapOf("routeId" to NATIVE_MICROPHONE_ROUTE_ID, "error" to errorMessage)
+            )
+            call.reject(errorMessage)
+        }
+    }
+
+    @PluginMethod
+    fun stopNativeMicrophoneRoute(call: PluginCall) {
+        nativeMicrophoneCaptureSession?.stop()
+        appendDiagnostic(
+            source = "wrapper-host",
+            level = "info",
+            addonId = null,
+            companionId = null,
+            event = "native-microphone.stop.completed",
+            details = mapOf("routeId" to NATIVE_MICROPHONE_ROUTE_ID)
+        )
+        call.resolve(buildNativeMicrophoneRouteStatusEnvelope())
+    }
+
+    @PluginMethod
     fun saveDebugArchiveBase64(call: PluginCall) {
         val requestedFileName = call.getString("fileName").orEmpty()
         appendDiagnostic(
@@ -1331,6 +1553,8 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        nativeMicrophoneCaptureSession?.stop()
+        nativeMicrophoneCaptureSession = null
         runtimeOperators.values.forEach { it.stop() }
         runtimeOperators.clear()
         super.handleOnDestroy()
@@ -1340,6 +1564,45 @@ class AxolyncNativeServiceCompanionHostPlugin : Plugin() {
 
     private fun resolveRegistration(addonId: String, companionId: String): NativeBridgeRegistration? =
         registrationByKey[companionKey(addonId, companionId)]
+
+    private fun hasRecordAudioPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun buildNativeMicrophoneRouteStatusEnvelope(lastErrorOverride: String? = null): JSObject {
+        val permissionGranted = hasRecordAudioPermission()
+        val session = nativeMicrophoneCaptureSession
+        val latestError = lastErrorOverride ?: session?.getLatestError()
+        return JSObject().apply {
+            put("available", permissionGranted)
+            put("support", if (permissionGranted) "available" else "unavailable")
+            put("providerKind", NATIVE_MICROPHONE_PROVIDER_KIND)
+            put("routeId", NATIVE_MICROPHONE_ROUTE_ID)
+            put("state", when {
+                session?.isRunning() == true -> "running"
+                latestError != null -> "error"
+                else -> "idle"
+            })
+            put("reason", when {
+                !permissionGranted -> "record-audio-permission-missing"
+                latestError != null -> latestError
+                else -> JSONObject.NULL
+            })
+            put(
+                "diagnostics",
+                JSObject().apply {
+                    put("routeId", NATIVE_MICROPHONE_ROUTE_ID)
+                    put("providerKind", NATIVE_MICROPHONE_PROVIDER_KIND)
+                    put("source", "UNPROCESSED")
+                    put("sampleRateHz", NATIVE_MICROPHONE_SAMPLE_RATE_HZ)
+                    put("channelCount", NATIVE_MICROPHONE_CHANNEL_COUNT)
+                    put("permissionGranted", permissionGranted)
+                    put("running", session?.isRunning() == true)
+                    put("lastError", latestError ?: JSONObject.NULL)
+                }
+            )
+        }
+    }
 
     private fun buildStatusEnvelope(addonId: String, companionId: String, lastErrorOverride: String?): JSObject {
         val registration = resolveRegistration(addonId, companionId)
