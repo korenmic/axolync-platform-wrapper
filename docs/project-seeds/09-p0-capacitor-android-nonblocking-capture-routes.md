@@ -43,6 +43,8 @@ Android `AudioPlaybackCapture` is a different route. It is conceptually similar 
   - permission/consent result;
   - chunk counts;
   - whether Browser accepted and forwarded chunks to SongSense.
+- Android Auto testing showed `CarConnection` can report `unknown` at capture-route status time even when the APK is being used through Android Auto. The wrapper must expose enough raw diagnostics for Browser/debug bundles to prove whether this is initialization timing, UI-mode mismatch, or a genuine non-car runtime.
+- The wrapper should not rely only on a single synchronous `CarConnection.type.value` read if a cached/observed value can make the route recommendation more reliable.
 
 ## Reference Notes
 
@@ -59,3 +61,8 @@ Android `AudioPlaybackCapture` is a different route. It is conceptually similar 
 
 None. Use the resolved direction in this seed.
 
+## Follow-Up Hardening
+
+- Cache/observe AndroidX `CarConnection` state so Android Auto recommendations are not lost when a one-shot read returns `unknown`.
+- Include raw AndroidX connection type, UI mode, connection source, and errors in capture-route status logs and response diagnostics.
+- Log native `AudioRecord` chunk progress compactly enough to prove the wrapper route is actually delivering audio without flooding runtime logs.
