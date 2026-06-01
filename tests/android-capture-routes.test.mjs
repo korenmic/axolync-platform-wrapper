@@ -24,7 +24,9 @@ test('Capacitor staged browser bridge publishes capture route APIs in active and
     assert.match(source, /startCaptureRoute/, rel);
     assert.match(source, /stopCaptureRoute/, rel);
     assert.match(source, /setCaptureRouteChunkHandler/, rel);
-    assert.match(source, /plugin\.addListener\('captureRouteChunk', emitCaptureRouteChunk\)/, rel);
+    assert.match(source, /capacitor\.addListener\('AxolyncNativeServiceCompanionHost', 'captureRouteChunk', emitCaptureRouteChunk\)/, rel);
+    assert.doesNotMatch(source, /plugin\.addListener\('captureRouteChunk', emitCaptureRouteChunk\)/, rel);
+    assert.match(source, /path: 'capacitor-global-addListener'/, rel);
   }
 });
 

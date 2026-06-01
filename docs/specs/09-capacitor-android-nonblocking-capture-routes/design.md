@@ -49,6 +49,8 @@ The wrapper should expose methods/events equivalent to:
 
 Use existing bridge conventions and naming if the repo already has a preferred injected host pattern.
 
+For Capacitor Android, capture-route chunk subscription should use one deliberate listener path for the current proof build: `window.Capacitor.addListener('AxolyncNativeServiceCompanionHost', 'captureRouteChunk', handler)`. If that global listener API is unavailable, the wrapper bridge must report an unavailable listener and Browser must not proceed as if native capture can feed SongSense.
+
 ## Test Strategy
 
 - Unit-test route capability serialization.
@@ -56,4 +58,3 @@ Use existing bridge conventions and naming if the repo already has a preferred i
 - Unit-test source fallback ordering.
 - Add Android-side tests or static checks proving `CarAudioRecord`, audio focus, and communication mode are not used by the route.
 - Add bridge tests proving Browser-facing route fields are emitted.
-
