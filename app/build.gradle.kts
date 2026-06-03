@@ -80,6 +80,8 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.car.app:app:1.7.0")
+    implementation("androidx.car.app:app-projected:1.7.0")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
