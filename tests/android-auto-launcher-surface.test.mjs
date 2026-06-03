@@ -21,6 +21,8 @@ test('Android projects declare Android Auto template discovery metadata', () => 
 
     assert.match(manifest, /android:name="com\.google\.android\.gms\.car\.application"/u, projectRoot);
     assert.match(manifest, /android:resource="@xml\/automotive_app_desc"/u, projectRoot);
+    assert.match(manifest, /android:name="androidx\.car\.app\.minCarApiLevel"/u, projectRoot);
+    assert.match(manifest, /android:value="1"/u, projectRoot);
     assert.match(automotiveDesc, /<automotiveApp>/u, projectRoot);
     assert.match(automotiveDesc, /<uses name="template" \/>/u, projectRoot);
     assert.doesNotMatch(automotiveDesc, /<uses name="media" \/>/u, projectRoot);
