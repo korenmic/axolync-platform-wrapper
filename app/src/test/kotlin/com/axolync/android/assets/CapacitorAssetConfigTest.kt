@@ -40,6 +40,7 @@ class CapacitorAssetConfigTest {
     fun `gradle staging task always reruns before packaging capacitor assets`() {
         val buildScript = repoFile("app/build.gradle.kts").readText()
         assertTrue(buildScript.contains("stageCapacitorBrowserAssets"))
+        assertTrue(buildScript.contains("AXOLYNC_SKIP_BROWSER_ASSET_SYNC"))
         assertTrue(buildScript.contains("outputs.upToDateWhen { false }"))
     }
 }
