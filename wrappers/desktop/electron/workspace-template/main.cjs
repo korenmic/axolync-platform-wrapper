@@ -3,8 +3,20 @@ const { createServer } = require('node:http');
 const { readFile } = require('node:fs/promises');
 const { extname, join, normalize, resolve, sep } = require('node:path');
 const { createNativeServiceCompanionHost } = require('./nativeServiceCompanionHost.cjs');
+const { resolveDesktopStoragePlacement } = require('./storagePlacement.cjs');
 
 const GPU_HARDENING_DISABLE_ENV = 'AXOLYNC_ELECTRON_DISABLE_GPU_HARDENING';
+const packagedAppDir = resolve(join(__dirname, 'app'));
+const desktopStoragePlacement = resolveDesktopStoragePlacement({ appDir: packagedAppDir });
+app.setPath('userData', desktopStoragePlacement.webviewUserDataDir);
+console.info('[axolync-storage-placement]', JSON.stringify({
+  hostFamily: 'electron',
+  storageProfile: desktopStoragePlacement.storageProfile,
+  storageRoot: desktopStoragePlacement.storageRoot,
+  webviewUserDataDir: desktopStoragePlacement.webviewUserDataDir,
+  nativeAssetsDir: desktopStoragePlacement.nativeAssetsDir,
+  warnings: desktopStoragePlacement.warnings,
+}));
 
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -57,7 +69,7 @@ async function ensureAssetServer() {
   if (assetServerRootUrl) {
     return assetServerRootUrl;
   }
-  const appRoot = resolve(join(__dirname, 'app'));
+  const appRoot = packagedAppDir;
   assetServer = createServer(async (request, response) => {
     const requestUrl = new URL(request.url || '/', 'http://127.0.0.1');
     const requestedPath = requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname;
@@ -102,7 +114,8 @@ async function createWindow() {
   const assetServerUrl = await ensureAssetServer();
   if (!nativeServiceCompanionHost) {
     nativeServiceCompanionHost = createNativeServiceCompanionHost({
-      appDir: resolve(join(__dirname, 'app')),
+      appDir: packagedAppDir,
+      storagePlacement: desktopStoragePlacement,
     });
     ipcMain.handle('axolync-native-service-companion-host:get-status', (_event, addonId, companionId) => (
       nativeServiceCompanionHost.getStatus(addonId, companionId)

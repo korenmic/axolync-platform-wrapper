@@ -19,6 +19,8 @@ use url::Url;
 use uuid::Uuid;
 use zip::ZipArchive;
 
+use crate::storage_placement::DesktopStoragePlacement;
+
 const HOST_FAMILY: &str = "tauri";
 const HOST_PLATFORM: &str = "desktop";
 const UNSUPPORTED_BUNDLE_MESSAGE: &str = "Native bridge is unavailable in this bundle for the current host.";
@@ -90,6 +92,8 @@ struct NativeDiagnosticEnvelope {
     generated_at_ms: i64,
     #[serde(rename = "collectionMethod")]
     collection_method: String,
+    #[serde(rename = "storagePlacement")]
+    storage_placement: DesktopStoragePlacement,
     logs: Vec<Value>,
 }
 
@@ -273,10 +277,11 @@ struct NativeCompanionHostState {
     registration_by_key: HashMap<String, EmbeddedNativeCompanionRegistration>,
     state_by_key: Mutex<HashMap<String, NativeCompanionRuntimeState>>,
     diagnostics: Arc<Mutex<Vec<Value>>>,
+    storage_placement: DesktopStoragePlacement,
 }
 
 impl NativeCompanionHostState {
-    fn load() -> Self {
+    fn load(storage_placement: DesktopStoragePlacement) -> Self {
         let parsed: EmbeddedNativeCompanionManifest = serde_json::from_str(
             EMBEDDED_NATIVE_SERVICE_COMPANION_MANIFEST_JSON,
         )
@@ -306,12 +311,14 @@ impl NativeCompanionHostState {
                 "count": registration_by_key.len(),
                 "diagnosticsFile": configured_native_runtime_diagnostics_file_path()
                     .map(|path| path.to_string_lossy().to_string()),
+                "storagePlacement": storage_placement.clone(),
             }),
         );
         Self {
             registration_by_key,
             state_by_key: Mutex::new(HashMap::new()),
             diagnostics,
+            storage_placement,
         }
     }
 
@@ -612,6 +619,7 @@ impl NativeCompanionHostState {
             host_abi: String::from(std::env::consts::ARCH),
             generated_at_ms: chrono_like_now_ms(),
             collection_method: String::from("native-bridge-host"),
+            storage_placement: self.storage_placement.clone(),
             logs: self
                 .diagnostics
                 .lock()
@@ -1996,10 +2004,10 @@ pub fn axolync_native_service_companion_get_diagnostics(
     state.get_diagnostics()
 }
 
-pub fn build_tauri_app() -> tauri::Builder<tauri::Wry> {
+pub fn build_tauri_app(storage_placement: DesktopStoragePlacement) -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
-        .manage(NativeCompanionHostState::load())
+        .manage(NativeCompanionHostState::load(storage_placement))
         .invoke_handler(tauri::generate_handler![
             axolync_live_song_notification_get_capabilities,
             axolync_live_song_notification_request_permission,

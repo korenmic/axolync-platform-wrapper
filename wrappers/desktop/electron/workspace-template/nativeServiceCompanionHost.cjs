@@ -96,7 +96,7 @@ async function loadRuntimeFactory(registration) {
   return factory;
 }
 
-function createNativeServiceCompanionHost({ appDir }) {
+function createNativeServiceCompanionHost({ appDir, storagePlacement = null }) {
   const registrationByKey = new Map();
   const stateByKey = new Map();
   const diagnostics = [];
@@ -147,6 +147,7 @@ function createNativeServiceCompanionHost({ appDir }) {
       details: {
         count: registrationByKey.size,
         diagnosticsFile: diagnosticsFilePath,
+        storagePlacement,
       },
     });
   }
@@ -244,6 +245,7 @@ function createNativeServiceCompanionHost({ appDir }) {
           companionId,
           hostFamily: 'electron',
           appDir,
+          storagePlacement,
         });
       }
       if (state.runtime && typeof state.runtime.start === 'function') {
@@ -418,6 +420,7 @@ function createNativeServiceCompanionHost({ appDir }) {
       hostAbi: typeof process.arch === 'string' && process.arch ? process.arch : null,
       generatedAtMs: Date.now(),
       collectionMethod: 'native-bridge-host',
+      storagePlacement,
       logs: [...diagnostics, ...runtimeLogs],
     };
   }
