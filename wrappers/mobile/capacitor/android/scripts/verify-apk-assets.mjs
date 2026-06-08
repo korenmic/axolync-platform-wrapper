@@ -223,7 +223,7 @@ function verifyApk(apkPath) {
   const resolved = path.resolve(apkPath);
   const expectedBuildFlavor = detectExpectedBuildFlavor(resolved);
   const expectedArtifactFlavor = detectExpectedArtifactFlavor(resolved);
-  const shouldIncludeDemoAssets = expectedArtifactFlavor === 'demo' || expectedBuildFlavor === 'debug';
+  const shouldIncludeDemoAssets = expectedArtifactFlavor === 'demo';
   const shouldIncludeLrclibNative = resolveExpectedLrclibNativeAssetState(resolved);
   const shouldEnableNotificationCapture = resolveExpectedNotificationCaptureState();
   const indexHtml = readZipEntry(resolved, 'assets/public/index.html');
