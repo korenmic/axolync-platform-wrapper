@@ -88,12 +88,17 @@ For the first implementation, only the currently approved behavior needs to be a
 - Implementing future arbitrary `custom` storage paths now.
 - Building a legacy-storage nuke/reset tool; that belongs in builder as a separate support seed.
 
-## Open Questions
+## Resolved Questions
 
-1. Which current Tauri API or startup hook is the safest authority for WebView user-data path redirection?
-2. Which Electron bootstrap file owns `app.setPath("userData", ...)` or equivalent setup today?
-3. What exact subfolder names should be finalized under `storage/`?
-4. Which wrapper diagnostics should be included in debug ZIPs versus startup console logs only?
+1. Tauri storage placement should be resolved during the earliest wrapper startup hook that can still affect app-data and WebView/user-data paths. The exact API/hook is an implementation discovery detail, not a product decision blocker.
+2. Electron storage placement should be resolved in the bootstrap path before app-ready/browser-window creation, using `app.setPath("userData", ...)` or the equivalent current Electron authority. The exact file/function is an implementation discovery detail.
+3. Use these first-pass subfolders under the selected storage root:
+   - `storage/app-data/`
+   - `storage/webview-user-data/`
+   - `storage/native-assets/`
+   - `storage/logs/`
+   - `storage/cache/`
+4. Emit startup diagnostics that identify the selected storage placement mode and resolved root paths. Include the same evidence in debug ZIP metadata where wrapper-to-debug metadata exists; otherwise startup logs are acceptable until the debug ZIP bridge can consume wrapper metadata.
 
 ## Acceptance Direction
 
