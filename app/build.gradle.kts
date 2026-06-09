@@ -100,6 +100,7 @@ tasks.register<Exec>("stageCapacitorBrowserAssets") {
     group = "build"
     workingDir = rootProject.projectDir
     commandLine("node", "scripts/stage-browser-assets.mjs")
+    onlyIf { System.getenv("AXOLYNC_SKIP_BROWSER_ASSET_SYNC") != "true" }
 
     inputs.file(rootProject.file("scripts/stage-browser-assets.mjs"))
     outputs.dir(file("$projectDir/src/main/assets/public"))
