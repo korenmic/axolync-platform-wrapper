@@ -1,10 +1,18 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 const STORAGE_PROFILE_ENV: &str = "AXOLYNC_DESKTOP_STORAGE_PROFILE";
 const STORAGE_ROOT_ENV: &str = "AXOLYNC_DESKTOP_STORAGE_ROOT";
 const NATIVE_DATA_ENV: &str = "AXOLYNC_NATIVE_DATA_DIR";
+const EMBEDDED_NATIVE_SERVICE_COMPANION_RUNTIME_CONFIG_JSON: &str =
+    include_str!("generated_native_service_companion_runtime_config.json");
+
+#[derive(Clone, Deserialize)]
+struct DesktopStorageRuntimeConfig {
+    #[serde(rename = "storageProfile", default)]
+    storage_profile: Option<String>,
+}
 
 #[derive(Clone, Serialize)]
 pub struct DesktopStoragePlacement {
@@ -54,6 +62,21 @@ fn normalize_storage_profile(value: Option<String>) -> Result<String, String> {
     }
 }
 
+fn configured_storage_profile() -> Option<String> {
+    if let Ok(explicit) = std::env::var(STORAGE_PROFILE_ENV) {
+        if !explicit.trim().is_empty() {
+            return Some(explicit);
+        }
+    }
+    let parsed: DesktopStorageRuntimeConfig = serde_json::from_str(
+        EMBEDDED_NATIVE_SERVICE_COMPANION_RUNTIME_CONFIG_JSON,
+    )
+    .unwrap_or(DesktopStorageRuntimeConfig {
+        storage_profile: None,
+    });
+    parsed.storage_profile
+}
+
 fn resolve_axolync_home_root() -> Result<PathBuf, String> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
@@ -89,7 +112,7 @@ fn chrono_like_probe() -> String {
 }
 
 pub fn resolve_desktop_storage_placement() -> Result<DesktopStoragePlacement, String> {
-    let storage_profile = normalize_storage_profile(std::env::var(STORAGE_PROFILE_ENV).ok())?;
+    let storage_profile = normalize_storage_profile(configured_storage_profile())?;
     let mut warnings = Vec::new();
     let storage_root = if storage_profile == "portable" {
         resolve_portable_root(&mut warnings)?

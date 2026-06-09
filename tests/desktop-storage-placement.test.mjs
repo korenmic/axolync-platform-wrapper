@@ -40,6 +40,18 @@ test('Tauri storage placement initializes before app build and reaches diagnosti
   );
   assert.match(helperSource, /storage_root\.join\("native-assets"\)/u);
   assert.match(helperSource, /portable-profile-mapped-to-axolync-home-on-posix/u);
+  assert.match(helperSource, /generated_native_service_companion_runtime_config\.json/u);
+  assert.match(helperSource, /serde\(rename = "storageProfile", default\)/u);
+  assert.match(helperSource, /std::env::var\(STORAGE_PROFILE_ENV\)/u);
+  const configuredStorageProfileBody = helperSource.match(/fn configured_storage_profile\(\) -> Option<String> \{(?<body>[\s\S]*?)\n\}/u)?.groups?.body || '';
+  assert.ok(
+    configuredStorageProfileBody.indexOf('std::env::var(STORAGE_PROFILE_ENV)') < configuredStorageProfileBody.indexOf('EMBEDDED_NATIVE_SERVICE_COMPANION_RUNTIME_CONFIG_JSON'),
+    'Tauri must let the runtime env override the builder-generated storage profile.',
+  );
+  assert.ok(
+    helperSource.indexOf('fn configured_storage_profile()') < helperSource.indexOf('normalize_storage_profile(configured_storage_profile())'),
+    'Tauri must consume builder-generated storageProfile before falling back to platform defaults.',
+  );
   assert.match(hostSource, /storage_placement: DesktopStoragePlacement/u);
   assert.match(hostSource, /storagePlacement/u);
   assert.match(hostSource, /NativeCompanionHostState::load\(storage_placement\)/u);

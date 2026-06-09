@@ -23,3 +23,9 @@
   - Assert Tauri initializes storage placement before app run and exposes diagnostics.
   - Assert browser/mobile/web storage ownership is not introduced.
   - _Requirements: 1.4, 2.3, 2.4, 5.1, 5.2, 5.3_
+
+- [x] 5. Align Tauri storage-profile authority with Electron.
+  - Read builder-generated `storageProfile` from the embedded runtime config.
+  - Keep `AXOLYNC_DESKTOP_STORAGE_PROFILE` as an explicit runtime override only.
+  - Assert Tauri no longer silently falls back to platform defaults when builder projects a storage profile.
+  - _Requirements: 1.1, 1.2, 2.1, 3.1_
